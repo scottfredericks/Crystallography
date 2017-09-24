@@ -12,8 +12,10 @@ C. Capillas, E.S. Tasci, G. de la Flor, D. Orobengoa, J.M. Perez-Mato and M.I. A
 Python 3.6
 PYCIFRW version 4.3
 	https://pypi.python.org/pypi/PyCifRW/4.3
+Numpy version 1.12.1
+	http://www.numpy.org/
 ---Current objectives---
-	Read position info and # of atoms from CIF file loop
+	Class tr: Define transformation matrix-column pair from (x, y, z) format
 	Convert H-M symbol into list of irreducible symm opp's
 	Find the irreducible symmetry operations for a group/supergroup
 -----------------------------------------------------'''
@@ -21,8 +23,14 @@ PYCIFRW version 4.3
 
 import sys
 import os.path
+import numpy as np
 import CifFile as cf
 
+#shorthand and constants
+pi = np.pi
+def cos(x): return np.cos(x)
+def sin(x): return np.sin(x)
+def sqrt(x): return np.sqrt(x)
 
 '''Parameters needed to define a structure'''
 expected = ["space group name", "cell length x", "cell length y",
@@ -45,7 +53,7 @@ class crystal:
 	data = {
 	#Index of space group
 	'gname': 0.0,
-	#cell parameters: angles a,b,c, lengths x,y,z
+	#cell parameters: lengths x,y,z, angles a,b,c
 	'cx': 0.0,
 	'cy': 0.0,
 	'cz': 0.0,
@@ -56,19 +64,22 @@ class crystal:
 	'nunit': 0.0}
 	label = []
 	pos = [[]]
+	#Add list of symmetry operations... irreducible?
 
-'''Get user input for needed values.
-x is a crystal to be updated by user input.
-needed is a list of strings, usually (expected).
-Outputs a new crystal object'''
+'''Get user input for needed values. (x) is a crystal to be updated by user
+input. Using "new" in place of x generates a new crystal structure. (needed)
+is a list of strings which we will ask for, usually (expected). Outputs a new
+crystal object with the provided info.'''
 def askdata(x, needed):
 	if x == "new": y = crystal
 	else: y = x
 	print("~Please enter the needed information:")
 	i = 0
 	while i < len(needed):
-		if needed[i] != "atomic info":
-			y.data[exdic[needed[i]]] = float(input(needed[i] + ": "))
+		#space group name is not a float
+		if needed[i] == "space group name":
+			y.data[exdic[needed[i]]] = input(needed[i] + ": ")
+		#For atomic labels and positions, we must parse the input
 		elif needed[i] == "atomic info":
 			y.label = []
 			y.pos = []
@@ -86,11 +97,14 @@ def askdata(x, needed):
 				k = 0
 				while k < 5:
 					if k == 0: y.label.append(str(textlist[j][k]))
-					elif k == 1: y.label[j] += (" " + str(textlist[j][k]))
+					elif k == 1: y.label[j] += str(textlist[j][k])
 					else: y.pos[j].append(float(textlist[j][k]))
 					k += 1
 				if j != (y.data['nunit']-1): y.pos.append([])
 				j += 1
+		#all other crystal data can be stored as floats
+		elif needed[i] != "atomic info":
+			y.data[exdic[needed[i]]] = float(input(needed[i] + ": "))
 		i += 1
 	return y
 
@@ -101,6 +115,7 @@ names = {'space group name': "_symmetry_space_group_name_H-M",
 	'cell angle a': "_cell_angle_alpha",
 	'cell angle b': "_cell_angle_beta",
 	'cell angle c': "_cell_angle_gamma"}
+
 '''Create a crystal object by parsing a cif file from (path).'''
 def loadcif(path):
 	print("Loading file: " + path)
@@ -111,28 +126,90 @@ def loadcif(path):
 	
 	for s in expected:
 		if (s != "atomic info") and (s !="number of atoms in unit"):
-			#if s is in info
+			if names[s] in info:
 				x.data[exdic[s]] = info[names[s]]
-			#else: add paramter to missing[]
-		#load atomic position info from _loop
-		#elif s == "atomic info":
-			
-		#elif s == "number of atoms in unit:
-			
+			else: missing.append(s)			
+		elif s == "number of atoms in unit":
+			if '_atom_site_label' in info:
+				x.data['gunit'] = len(info.GetItemValue('_atom_site_label'))
+		elif s == "atomic info":
+			if '_atom_site_label' in info\
+			and '_atom_site_fract_x' in info\
+			and '_atom_site_fract_y' in info\
+			and '_atom_site_fract_z' in info:
+				i = 0
+				while i < len(info.GetItemValue('_atom_site_fract_x')):
+					x.label.append(info.GetItemValue('_atom_site_label')[i])
+					x.pos[i].append(float(info.GetItemValue('_atom_site_fract_x')[i]))
+					x.pos[i].append(float(info.GetItemValue('_atom_site_fract_y')[i]))
+					x.pos[i].append(float(info.GetItemValue('_atom_site_fract_z')[i]))
+					if i < len(info.GetItemValue('_atom_site_fract_x')) - 1:
+						x.pos.append([])
+					i += 1
 	#If any parameters are missing, get directly from user
-	for i in missing:
-		print("The file is missing: " + missing[i])
-		x = askdata(missing[i], x)
-	print("Finished loading file: " + path)
+	if missing != []:
+		print("Could not find the following: " + str(missing))
+		x = askdata(x, missing)
+	'''print("Entered info:") #Check that the file loaded correctly
+	print(x.data)
+	print(x.label)
+	print(x.pos)'''
+	print("Finished loading " + path)
 	return x
 
-'''Class for storing a set of symmetry group operations.'''
+'''Class for storing a set of symmetry group operations...?'''
 #class sgroup:
+
+'''A class for storing matrix-column transformations (W,w)
+The first 3 vectors are the matrix W, and the 4th vector
+represents the translation w. Can be initialized using
+text string in "a+bx,c+dy,e+fz" format. We also define
+some basic transformations for testing.'''
+class tr:
+	#Basic transformations for testing
+	identity = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0], [0.0,0.0,0.0]]
+	inversion = [[-1.0,0.0,0.0],[0.0,-1.0,0.0],[0.0,0.0,-1.0], [0.0,0.0,0.0]]
+	reflectx = [[-1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0], [0.0,0.0,0.0]]
+	reflecty = [[1.0,0.0,0.0],[0.0,-1.0,0.0],[0.0,0.0,1.0], [0.0,0.0,0.0]]
+	reflectz = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,-1.0], [0.0,0.0,0.0]]
+	#rotation by 90 degrees clockwise
+	rotatex = [[1.0,0.0,0.0],[0.0,0.0,1.0],[0.0,-1.0,0.0], [0.0,0.0,0.0]]
+	rotatey = [[0.0,0.0,-1.0],[0.0,1.0,0.0],[1.0,0.0,0.0], [0.0,0.0,0.0]]
+	rotatez = [[0.0,1.0,0.0],[-1.0,0.0,0.0],[0.0,0.0,1.0], [0.0,0.0,0.0]]
+	#rotation by 90 degrees counter-clockwise
+	rotatexc = [[1.0,0.0,0.0],[0.0,0.0,-1.0],[0.0,1.0,0.0], [0.0,0.0,0.0]]
+	rotateyc = [[0.0,0.0,1.0],[0.0,1.0,0.0],[-1.0,0.0,0.0], [0.0,0.0,0.0]]
+	rotatezc = [[0.0,-1.0,0.0],[1.0,0.0,0.0],[0.0,0.0,1.0], [0.0,0.0,0.0]]
+	#translation by a vector v
+	def translate(v):
+		return [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0], [float(v[0]), float(v[1]), float(v[2])]]
+	#reflection about a plane defined by v
+	#rotation by 2pi/n about an axis v	
+	def rotate(n, v):
+		if n == 0: return identity
+		#rotation angle a
+		a = 2.0 * pi / n
+		#normalize v
+		v = [float(v[0]), float(v[1]), float(v[2])]
+		absv = sqrt((v[0]**2 + v[1]**2 + v[2]**2))
+		v = [v[0]*absv, v[1]*absv, v[2]*absv]
+		return [[cos(a)+(1-cos(a))*v[0]*v[0], (1-cos(a))*v[0]*v[1] - sin(a)*v[2], (1-cos(a))*v[0]*v[2] + sin(a)*v[1]],
+			[(1-cos(a))*v[1]*v[0] + sin(a)*v[2], cos(a) + (1-cos(a))*v[1]*v[1], (1-cos(a))*v[1]*v[2] - sin(a)*v[0]],
+			[(1-cos(a))*v[2]*v[0] - sin(a)*v[1], (1-cos(a))*v[2]*v[1] + sin(a)*v[0], cos(a) + (1-cos(a))*v[2]*v[2]],
+			[0,0,0]]
+	
+	#Allow initialization from a string of the form "a+bx,c+dy,e+fz"
 
 '''Takes in a float vector (a), and a transformation matrix-column
 pair (b). Outputs a new coordinate triplet. 'l' means left, as we are
 applying a transormation 'g' to a vector 'a': ga, as opposed to ag'''
+#convert to numpy
 def ltransform(b, a):
+	for i in range(4):
+		for j in range(3):
+			if b[i][j] is not float: b[i][j] = float(b[i][j])
+	for i in range(3):
+		if a[i] is not float: a[i] = float(a[i])
 	c = [float(0), float(0), float(0)]
 	i = 0
 	while i < 3:
@@ -143,6 +220,9 @@ def ltransform(b, a):
 		c[i] += b[3][i]
 		i += 1
 	return c
+
+'''rtransform'''
+	#convert to numpy
 
 '''Outputs the set of minimal supergroups for a given symmetry group
 Takes in a data object (a), outputs a potential symmetry operation.
@@ -169,7 +249,6 @@ If CIF file passed as the first argument, set it as 1st tree element'''
 if len(sys.argv) > 1:
 	if os.path.isfile(sys.argv[1]):
 		tree = [[loadcif(sys.argv[1])]]
-		#tree[0].append(...) #We need to convert the file into data
 	else:
 		print("Error: Could not read file.\n---Closing program.---")
 		sys.exit()
@@ -198,4 +277,12 @@ else:
 	#If dumax <= tol: add b to tree
 #Once no more pseudosymmetries are found, output the elements of the tree
 	#Display symmetry group, positions, dumax, index
+print("Before:")
+print(tree[0][0].pos)
+print("After:")
+tree[0].append(crystal)
+for i in range(len(tree[0][0].pos)):
+	tree[0][1].pos[i] = ltransform(tr.rotate(4, [1,0,0]), tree[0][0].pos[i])
+print(tree[0][1].pos)
+
 print("---Closing program---")
