@@ -1,0 +1,41 @@
+Pseudosymmetry search general algorithm.
+Scott Fredericks
+
+
+Given: an input structure with known:
+	*atomic coordinates of asymmetric unit/species
+	*symmetry group name or number # (preferred Hermann-Mauguin)
+	*lattice parameters
+Desired: a chain of pseudosymmetric supergroups (G[][]) for H
+------------------------------------------
+import pymatgen as mg
+
+Set tree[0] to our initial input structure;
+Until no more pseudosymmetries are found:
+	Generate symmetry data for H. For each species:
+		Store the given positions
+			?
+		Store the symmetry operations
+			?
+		Find and store the Wyckoff positions Wh[] (ignoring oxidation states)
+			?
+	Find the minimal supergroups G of H
+		If a supergroup has already been scanned over, skip it
+	For each minimal supergroup:
+		Place supergroup into subgroup setting
+			Perform inverse transform onto G, and onto wyckoff positions for G
+		Find the Wyckoff splitting of G->H (Wg->Wh[])
+			?
+		For each atomic species:
+			Determine Wg from Wh
+			if Split(Wg) == Wh[]: #might be easier working from H to G
+				Find idealized structure by plugging (abstract) Wg into Wh
+				Calculate u using abs(idealized - actual)
+				keep track of umax
+			else: reject supergroup #does not meet Wycksplit conditions
+		If umax =< tol: flag supergroup as pseudosymmetry
+			Append supergroup to tree, and store structure data
+				Use original positions (not idealized)
+				pymatgen.core.structure.Structure.from_spacegroup()
+		else: reject supergroup, output result
+Output results

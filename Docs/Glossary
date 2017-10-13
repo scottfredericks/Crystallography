@@ -1,0 +1,19 @@
+Glossary of Crystallographic Group Terms
+----------------------------------------
+Group: A set g with a binary operation on the set. The binary operation must have
+	the following properties: closure, associativity, inverses, and an identity.
+	So, we can think of the elements of the set as being operations themselves.
+Subgroup: A subset of a group which still meets the criteria for a group.
+	ex: the integers are a subgroup of the reals (for addition)
+Supergroup: A group for which the given group is a subgroup.
+	ex: the reals are a supergroup of the integers (for addition)
+Normal Subgroup: a subgroup H of G which commutes with all g: (gH = Hg for all g)
+Conjugate: two elements a and b (in some group G) are conjugate if a=gbg^-1 for
+	some g in G.
+Conjugacy Class: The conjugacy class of an element a is the set of all elements b
+	which are conjugate to a.
+Stabilizer:  
+Normalizer:  
+Lattice-Equal Subgroup: Subgroup U of G which contains G's translational group T:
+	T is a subset of U
+Class-Equal Subgroup: UT = G (U contains G's point group K, but not all of T)
