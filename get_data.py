@@ -5,5 +5,5 @@ Using pymatgen (pymatgen.org)
 '''
 import pymatgen
 
-def fromFile(path):
+def from_file(path):
 	return pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)

@@ -3,14 +3,14 @@ Replacement file for pseuso. Now using pymatgen.
 '''
 import numpy
 import pymatgen
-import getdata
+import get_data
 import pymatgen.analysis.structure_matcher
 import pymatgen.symmetry.analyzer
 import spglib as spg
 import pymatgen.symmetry.settings
 import numpy as np
 
-def filtersite(v):
+def filter_site(v):
 	w = v
 	for i in range(len(w)):
 		while w[i]<0: w[i] += 1
@@ -45,9 +45,9 @@ def dsquared(p1, p2):
 	return (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2
 
 #Obtain a set of points by applying a set of operations to one point
-def applyops(p1, ops):
+def apply_ops(p1, ops):
 	#convert to np.unique(array, axis=0)
-	#use filtersite()
+	#use filter_site()
 	pos = []
 	pos.append(pymatgen.core.operations.SymmOp.from_xyz_string('x,y,z').operate(p1))
 	for x in ops:
@@ -59,7 +59,7 @@ def applyops(p1, ops):
 		if isnew: pos.append(new)
 	return pos
 
-#For a set of operations, return the set of symmetry operations for a point
+#Return the subset of ops which leaves the point p1 invariant
 def stabilizer(p1, ops, tol=.01):
 	stab = []
 	for i in range(len(ops)):
@@ -71,7 +71,7 @@ def stabilizer(p1, ops, tol=.01):
 
 #Find the subsset of general Wyckoff positions corresponding to a point
 #Broken: not always a conjugacy class
-def wyckset(p1, ops, tol=.01):
+def wyckoff_set(p1, ops, tol=.01):
 	pos = []
 	pos.append(pymatgen.core.operations.SymmOp.from_xyz_string('x,y,z').operate(p1))
 	wset = []
@@ -87,16 +87,16 @@ def wyckset(p1, ops, tol=.01):
 			wset.append(x)
 	return wset
 
-def composeops(op1,op2):
+def compose_ops(op1,op2):
 	#Apply transform op1 to op2, then normalize
 	m = np.dot(op1.rotation_matrix,op2.rotation_matrix)
 	v = op1.operate(op2.translation_vector)
-	v = filtersite(v)
+	v = filter_site(v)
 	new = pymatgen.core.operations.SymmOp.from_rotation_and_translation(m,v)
 	return new
 
 #map a Wyckoff set W1 to a supergroup Wyckoff set W2
-def wycksetmap(W1, W2):
+def wyckoff_set_map(W1, W2):
 	if len(W2)<len(W1): print("Error: cannot map to a smaller set")
 	map = []
 	for i in range(len(W1)):
@@ -123,7 +123,7 @@ def checkpseudosymmetry(species, positions, transform, generator):
 use struct1.sites[i].frac_coords
 This gives a length 3 array of floating point fractional coordinates.
 For absolute coordinates, use sites[i].coords instead.'''
-mystruct1 = getdata.fromFile("test.cif")
+mystruct1 = get_data.from_file("test.cif")
 
 #Get a list of symmetry operations for the structure
 sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
@@ -148,7 +148,7 @@ myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
 newops = []
 for i in range(len(symmops)):
 	newops.append(symmops[i])
-	newops.append(composeops(myop,symmops[i]))
+	newops.append(compose_ops(myop,symmops[i]))
 for i in range(len(mystruct1.frac_coords)):
 	print(str(mystruct1.species[i])+" "+str(mystruct1.frac_coords[i]))
 	for y in symmops:
