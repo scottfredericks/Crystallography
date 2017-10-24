@@ -10,6 +10,9 @@ import spglib as spg
 import pymatgen.symmetry.settings
 import numpy as np
 
+
+#Function and class definitions
+#--------------------------
 def filter_site(v):
 	w = v
 	for i in range(len(w)):
@@ -98,25 +101,50 @@ def compose_ops(op1,op2):
 #map a Wyckoff set W1 to a supergroup Wyckoff set W2
 def wyckoff_set_map(W1, W2):
 	if len(W2)<len(W1): print("Error: cannot map to a smaller set")
-	map = []
+	mapping = []
 	for i in range(len(W1)):
 		for j in range(len(W2)):
 			if W1[i] == W2[j]:
-				map.append(j)
+				mapingp.append(j)
 				break
-			
-		if map[i] == []:
+		if mapping[i] == []:
 			print("Error: could find map.")
 			break
-	return map
+	return mapping
 
-'''
-def checkpseudosymmetry(species, positions, transform, generator):
-	for i in len(atoms):
-		a
-	return
-'''	
+#Brute-force check whether or not an operation is pseudosmmetric
+#with respect to a structure hstruct
+def naive_check(hstruct, op):
+	n = len(hstruct.frac_coords)
+	gatoms = []
+	species = []
+	displacement = [[]]
+	mapping = []
+	for i in range(n):
+		gatoms.append(op.operate(hstruct.sites[i].coords))
+		species.append(hstruct.species[i])
+	for i in range(n):
+		if i != 0: displacement.append([])
+		for j in range(n):
+			displacement[i].append(gatoms[j]-hstruct.sites[i].coords)
+	for i in range(n):
+		min_index = i
+		min_value = dsquared(hstruct.sites[i].coords,gatoms[i])
+		for j in range(n):
+			if species[i] == species[j] and dsquared(gatoms[j],hstruct.sites[i].coords) < min_value:
+				min_index = j
+				min_value = dsquared(gatoms[j],hstruct.sites[i].coords)
+		mapping.append(min_index)
+	for i in range(n):
+		print("Point "+str(i)+" ---------------")
+		print("In H: "+str(hstruct.sites[i].coords))
+		print("In G: "+str(gatoms[mapping[i]]))
+		print("Displacement: "+str(displacement[i][mapping[i]]))
+	return mapping
 
+
+#Main program
+#-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
 '''If you want to access individual points from the Structure object,
@@ -135,8 +163,8 @@ symmops = sga.get_symmetry_operations()
 #Find the general positions of G
 
 
-#-----------------------------------------------------------------------
 #test functionality
+#-----------------------------------------------------------------------
 text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'y,-x+y,z+1/2', 'x-y,x,z+1/2', 'y,x,-z+1/2', 'x-y,-y,-z+1/2',
 		'-x,-x+y,-z+1/2', '-y,-x,-z', '-x+y,y,-z', 'x,x-y,-z',
@@ -144,7 +172,11 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'-y,x-y,-z+1/2', '-x+y,-x,-z+1/2', '-y,-x,z+1/2', '-x+y,y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
-myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
+#myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
+myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, y, z')
+print(naive_check(mystruct1, myop))
+
+'''
 newops = []
 for i in range(len(symmops)):
 	newops.append(symmops[i])
@@ -155,7 +187,7 @@ for i in range(len(mystruct1.frac_coords)):
 		if is_symmop(mystruct1.frac_coords[i], y):
 			print(y.as_xyz_string())
 
-'''This gives a list of symmetry operations which leave a given point invariant.
+This gives a list of symmetry operations which leave a given point invariant.
 It should be possible to implement this into Wyckset in order to create a unique
 set of general positions corresponding to each point.'''
 
