@@ -45,7 +45,7 @@ def is_symmop(p1, op, tol=.01):
 
 #square of the distance between two points
 def dsquared(p1, p2):
-	return (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2
+	return (p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2
 
 #Obtain a set of points by applying a set of operations to one point
 def apply_ops(p1, ops):
@@ -67,8 +67,7 @@ def stabilizer(p1, ops, tol=.01):
 	stab = []
 	for i in range(len(ops)):
 		p2 = ops[i].operate(p1)
-		dsquared = (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2
-		if dsquared <= tol**2:
+		if dsquared(p1,p2) <= tol**2:
 			stab.append(ops[i])
 	return stab
 
@@ -113,33 +112,43 @@ def wyckoff_set_map(W1, W2):
 	return mapping
 
 #Brute-force check whether or not an operation is pseudosmmetric
-#with respect to a structure hstruct
+#with respect to a structure hstruct. Return a map from point i to
+#its closest transformed neighbor j.
+'''Issue: dsquared() does not always return the shortest distance.
+For example, the point (0.1,0,0) is only .2 away from (-0.1,0,0),
+but if we filter the 2nd site to (0.9,0,0), we will not get this.
+Pymatgen's Periodic_Site class might solve this...'''
 def naive_check(hstruct, op):
 	n = len(hstruct.frac_coords)
+	hatoms = []
 	gatoms = []
 	species = []
 	displacement = [[]]
 	mapping = []
 	for i in range(n):
-		gatoms.append(op.operate(hstruct.sites[i].coords))
+		hatoms.append(hstruct.sites[i].frac_coords)
+		gatoms.append(op.operate(hstruct.sites[i].frac_coords))
 		species.append(hstruct.species[i])
 	for i in range(n):
 		if i != 0: displacement.append([])
 		for j in range(n):
-			displacement[i].append(gatoms[j]-hstruct.sites[i].coords)
+			displacement[i].append(gatoms[j]-hatoms[i])
+	print("Shortest distances from point i in h to point j after transformation:")
 	for i in range(n):
+		print("-------------i="+str(i)+" --------------")
 		min_index = i
-		min_value = dsquared(hstruct.sites[i].coords,gatoms[i])
+		min_value = dsquared(hatoms[i],gatoms[i])
 		for j in range(n):
-			if species[i] == species[j] and dsquared(gatoms[j],hstruct.sites[i].coords) < min_value:
+			print(np.sqrt(dsquared(gatoms[j],hatoms[i])))
+			if species[i] == species[j] and (dsquared(gatoms[j],hatoms[i]) < min_value):
 				min_index = j
-				min_value = dsquared(gatoms[j],hstruct.sites[i].coords)
+				min_value = dsquared(gatoms[j],hatoms[i])
 		mapping.append(min_index)
-	for i in range(n):
+	'''for i in range(n):
 		print("Point "+str(i)+" ---------------")
 		print("In H: "+str(hstruct.sites[i].coords))
 		print("In G: "+str(gatoms[mapping[i]]))
-		print("Displacement: "+str(displacement[i][mapping[i]]))
+		print("Displacement: "+str(displacement[i][mapping[i]]))'''
 	return mapping
 
 
@@ -152,7 +161,8 @@ use struct1.sites[i].frac_coords
 This gives a length 3 array of floating point fractional coordinates.
 For absolute coordinates, use sites[i].coords instead.'''
 mystruct1 = get_data.from_file("test.cif")
-
+print("Input structure:")
+print(mystruct1)
 #Get a list of symmetry operations for the structure
 sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
 symmops = sga.get_symmetry_operations()
@@ -173,8 +183,8 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
-myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, y, z')
-print(naive_check(mystruct1, myop))
+myop = pymatgen.core.operations.SymmOp.from_xyz_string('z, x, y')
+naive_check(mystruct1, myop)
 
 '''
 newops = []
