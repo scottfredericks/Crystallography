@@ -123,32 +123,23 @@ def naive_check(hstruct, op):
 	hatoms = []
 	gatoms = []
 	species = []
-	displacement = [[]]
 	mapping = []
 	for i in range(n):
-		hatoms.append(hstruct.sites[i].frac_coords)
-		gatoms.append(op.operate(hstruct.sites[i].frac_coords))
+		hatoms.append(hstruct.sites[i])
+		gatoms.append(pymatgen.core.sites.PeriodicSite(hatoms[i].specie, myop.operate(hatoms[i].frac_coords), hatoms[i].lattice))
 		species.append(hstruct.species[i])
-	for i in range(n):
-		if i != 0: displacement.append([])
-		for j in range(n):
-			displacement[i].append(gatoms[j]-hatoms[i])
 	print("Shortest distances from point i in h to point j after transformation:")
 	for i in range(n):
-		print("-------------i="+str(i)+" --------------")
 		min_index = i
-		min_value = dsquared(hatoms[i],gatoms[i])
+		min_value = hatoms[i].distance(gatoms[i])
 		for j in range(n):
-			print(np.sqrt(dsquared(gatoms[j],hatoms[i])))
-			if species[i] == species[j] and (dsquared(gatoms[j],hatoms[i]) < min_value):
+			#print(hatoms[i].distance(gatoms[j])/2)
+			if species[i] == species[j] and (hatoms[i].distance(gatoms[j]) < min_value):
 				min_index = j
-				min_value = dsquared(gatoms[j],hatoms[i])
+				min_value = hatoms[i].distance(gatoms[j])
 		mapping.append(min_index)
-	'''for i in range(n):
-		print("Point "+str(i)+" ---------------")
-		print("In H: "+str(hstruct.sites[i].coords))
-		print("In G: "+str(gatoms[mapping[i]]))
-		print("Displacement: "+str(displacement[i][mapping[i]]))'''
+		print("--------i="+str(i)+" ---->---- j= "+str(min_index)+"---------")
+		print(min_value/2)
 	return mapping
 
 
@@ -163,6 +154,7 @@ For absolute coordinates, use sites[i].coords instead.'''
 mystruct1 = get_data.from_file("test.cif")
 print("Input structure:")
 print(mystruct1)
+
 #Get a list of symmetry operations for the structure
 sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
 symmops = sga.get_symmetry_operations()
@@ -183,11 +175,11 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
-myop = pymatgen.core.operations.SymmOp.from_xyz_string('z, x, y')
+myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -y, -z')
+#myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 naive_check(mystruct1, myop)
 
-'''
-newops = []
+'''newops = []
 for i in range(len(symmops)):
 	newops.append(symmops[i])
 	newops.append(compose_ops(myop,symmops[i]))
@@ -200,4 +192,3 @@ for i in range(len(mystruct1.frac_coords)):
 This gives a list of symmetry operations which leave a given point invariant.
 It should be possible to implement this into Wyckset in order to create a unique
 set of general positions corresponding to each point.'''
-
