@@ -3,12 +3,12 @@ Replacement file for pseuso. Now using pymatgen.
 '''
 import numpy
 import pymatgen
-import get_data
 import pymatgen.analysis.structure_matcher
 import pymatgen.symmetry.analyzer
 import spglib as spg
 import pymatgen.symmetry.settings
 import numpy as np
+from timeit import default_timer as timer
 
 
 #Function and class definitions
@@ -114,10 +114,6 @@ def wyckoff_set_map(W1, W2):
 #Brute-force check whether or not an operation is pseudosmmetric
 #with respect to a structure hstruct. Return a map from point i to
 #its closest transformed neighbor j.
-'''Issue: dsquared() does not always return the shortest distance.
-For example, the point (0.1,0,0) is only .2 away from (-0.1,0,0),
-but if we filter the 2nd site to (0.9,0,0), we will not get this.
-Pymatgen's Periodic_Site class might solve this...'''
 def naive_check(hstruct, op):
 	n = len(hstruct.frac_coords)
 	hatoms = []
@@ -129,6 +125,7 @@ def naive_check(hstruct, op):
 		gatoms.append(pymatgen.core.sites.PeriodicSite(hatoms[i].specie, myop.operate(hatoms[i].frac_coords), hatoms[i].lattice))
 		species.append(hstruct.species[i])
 	print("Shortest distances from point i in h to point j after transformation:")
+	max_min_value = 0
 	for i in range(n):
 		min_index = i
 		min_value = hatoms[i].distance(gatoms[i])
@@ -138,8 +135,14 @@ def naive_check(hstruct, op):
 				min_index = j
 				min_value = hatoms[i].distance(gatoms[j])
 		mapping.append(min_index)
+		if min_value > max_min_value:
+			max_min_value = min_value
 		print("--------i="+str(i)+" ---->---- j= "+str(min_index)+"---------")
 		print(min_value/2)
+	if len(np.unique(mapping)) == n:
+		print("All points uniquely mapped.")
+	else: print(str(n-len(np.unique(mapping)))+" points not mapped to.")
+	print("Largest displacement: "+str(max_min_value/2))
 	return mapping
 
 
@@ -151,7 +154,8 @@ def naive_check(hstruct, op):
 use struct1.sites[i].frac_coords
 This gives a length 3 array of floating point fractional coordinates.
 For absolute coordinates, use sites[i].coords instead.'''
-mystruct1 = get_data.from_file("test.cif")
+path = "test.cif"
+mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
 print("Input structure:")
 print(mystruct1)
 
@@ -174,10 +178,15 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'-y,x-y,-z+1/2', '-x+y,-x,-z+1/2', '-y,-x,z+1/2', '-x+y,y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
+#H=185, G=193 (Water)
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
+#H=38, G=65 (BaTiO3)
 myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -y, -z')
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
-naive_check(mystruct1, myop)
+start = timer()
+#naive_check(mystruct1, myop)
+end = timer()
+print("Time elapsed: "+str(end-start))
 
 '''newops = []
 for i in range(len(symmops)):
