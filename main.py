@@ -5,7 +5,6 @@ import numpy
 import pymatgen
 import pymatgen.analysis.structure_matcher
 import pymatgen.symmetry.analyzer
-import spglib as spg
 import pymatgen.symmetry.settings
 import numpy as np
 from timeit import default_timer as timer
@@ -63,11 +62,11 @@ def apply_ops(p1, ops):
 	return pos
 
 #Return the subset of ops which leaves the point p1 invariant
-def stabilizer(p1, ops, tol=.01):
+def stabilizer(site1, ops, tol=.01):
 	stab = []
 	for i in range(len(ops)):
-		p2 = ops[i].operate(p1)
-		if dsquared(p1,p2) <= tol**2:
+		site2 = pymatgen.core.sites.PeriodicSite(site1.specie, ops[i].operate(site1.frac_coords), site1.lattice)
+		if site1.distance(site2) <= tol:
 			stab.append(ops[i])
 	return stab
 
@@ -112,7 +111,7 @@ def wyckoff_set_map(W1, W2):
 	return mapping
 
 #Brute-force check whether or not an operation is pseudosmmetric
-#with respect to a structure hstruct. Return a map from point i to
+#with respect to a structure hstruct. Return a displacement map from point i to
 #its closest transformed neighbor j.
 def naive_check(hstruct, op):
 	n = len(hstruct.frac_coords)
@@ -142,7 +141,7 @@ def naive_check(hstruct, op):
 	if len(np.unique(mapping)) == n:
 		print("All points uniquely mapped.")
 	else: print(str(n-len(np.unique(mapping)))+" points not mapped to.")
-	print("Largest displacement: "+str(max_min_value/2))
+	print("Largest displacement: "+str(max_min_value))
 	return mapping
 
 
@@ -150,27 +149,20 @@ def naive_check(hstruct, op):
 #-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
-'''If you want to access individual points from the Structure object,
-use struct1.sites[i].frac_coords
-This gives a length 3 array of floating point fractional coordinates.
-For absolute coordinates, use sites[i].coords instead.'''
 path = "test.cif"
 mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
 print("Input structure:")
 print(mystruct1)
 
-#Get a list of symmetry operations for the structure
-sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
-symmops = sga.get_symmetry_operations()
-
-#get atomic specie info
 #Find the supergroups of struct1
 #Get the transformation W,w from G to H
-#Find the general positions of G
-
+#Find a/the generator g from G to G
 
 #test functionality
 #-----------------------------------------------------------------------
+#Get a list of symmetry operations for the structure
+sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
+symmops = sga.get_symmetry_operations()
 text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'y,-x+y,z+1/2', 'x-y,x,z+1/2', 'y,x,-z+1/2', 'x-y,-y,-z+1/2',
 		'-x,-x+y,-z+1/2', '-y,-x,-z', '-x+y,y,-z', 'x,x-y,-z',
@@ -178,26 +170,30 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'-y,x-y,-z+1/2', '-x+y,-x,-z+1/2', '-y,-x,z+1/2', '-x+y,y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
-#H=185, G=193 (Water)
+
+#H=185, G=186 (Water), index = 2
+#myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, z+1/2')
+#H=185, G=186 (Water), index = 3
+#myop = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/3, y+2/3, z')
+#H=185, G=193 (Water), index = 2
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
 #H=38, G=65 (BaTiO3)
 myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -y, -z')
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
+
+
+newops = []
+for i in range(len(symmops)):
+	newops.append(symmops[i])
+	newops.append(compose_ops(myop,symmops[i]))	
+
 start = timer()
-#naive_check(mystruct1, myop)
+#naive_check(mystruct1, compose_ops(myop, compose_ops(myop,myop)))
+stab = stabilizer(mystruct1.sites[8], newops)
+for x in stab:
+	print(x.as_xyz_string())
 end = timer()
 print("Time elapsed: "+str(end-start))
 
-'''newops = []
-for i in range(len(symmops)):
-	newops.append(symmops[i])
-	newops.append(compose_ops(myop,symmops[i]))
-for i in range(len(mystruct1.frac_coords)):
-	print(str(mystruct1.species[i])+" "+str(mystruct1.frac_coords[i]))
-	for y in symmops:
-		if is_symmop(mystruct1.frac_coords[i], y):
-			print(y.as_xyz_string())
 
-This gives a list of symmetry operations which leave a given point invariant.
-It should be possible to implement this into Wyckset in order to create a unique
-set of general positions corresponding to each point.'''
+
