@@ -149,7 +149,7 @@ def naive_check(hstruct, op):
 #-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
-path = "test.cif"
+path = input("Relative CIF file path: ")
 mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
 print("Input structure:")
 print(mystruct1)
@@ -178,20 +178,31 @@ group193 = []
 #H=185, G=193 (Water), index = 2
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
 #H=38, G=65 (BaTiO3)
-myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -y, -z')
+myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 
+myop1 = pymatgen.core.operations.SymmOp.from_xyz_string('x, y+1/2, z+1/2')
+myop2 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y, z+1/2')
+myop3 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y+1/2, z')
 
 newops = []
 for i in range(len(symmops)):
 	newops.append(symmops[i])
-	newops.append(compose_ops(myop,symmops[i]))	
+	newops.append(compose_ops(myop,symmops[i]))
+	'''newops.append(compose_ops(myop1,symmops[i]))
+	newops.append(compose_ops(myop2,symmops[i]))
+	newops.append(compose_ops(myop3,symmops[i]))'''
 
 start = timer()
-#naive_check(mystruct1, compose_ops(myop, compose_ops(myop,myop)))
-stab = stabilizer(mystruct1.sites[8], newops)
-for x in stab:
-	print(x.as_xyz_string())
+#--------------Timer start
+for s in mystruct1.sites:
+	stab = stabilizer(s, newops)
+	print("length = " + str(len(stab)))
+	for x in stab:
+		print(x.as_xyz_string())
+print(sga.get_hall())
+	
+#--------------Timer stop
 end = timer()
 print("Time elapsed: "+str(end-start))
 
