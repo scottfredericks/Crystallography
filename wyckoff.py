@@ -32,34 +32,30 @@ class wyck_pos:
 	def from_hall_number(number):
 		wpos = wyck_pos
 		return wpos
-	def transform(self, transformation):
+	def transformed(transformation):
 		#Transform a wyckoff position in G to the setting of H
 		#Consider variable name changes (see WYCKSPLIT examples)
 		#Consider periodicity constraints (no negative translations)
 		for x in self.pos: pass
 		for x in self.symm_set: pass
-	def split(self, wh, transformation)):
-	#split a Wyckoff position in G into a set in H, given a G->H transformation
-		index = len(self.pos)/len(wh.pos)		
-		mapping = []
-		n_remaining = self.mult
-		temp_pos = self.pos
-		wg.transform(transformation)
-		For x in wh:
+
+class wyck_split(wg, wh):
+	#class to calculate and store Wyckoff splitting from G to H
+	#It is assumed wg and wh are in the same setting. Call wg.transform() first
+	indices = [[]]
+	xyzmap = [[[]]]
+	index = len(self.pos)/len(wh.pos)		
+	n_remaining = self.mult
+	temp_pos = self.pos
+	for i in range(len(wg)): #Loop over wyckpos's in G
+		For j in range(len(wh)):#Loop over wyckpos's in H
 			if x.mult =< n:
-				#check site against wg
-				#check if all pos's could be in wg (with def of x,y,z)
-				xyzmap = ['','','']
-				for y in wh.pos:
-					check if mapping exists for wg.pos->
-		return mapping
-
-wg = [] #set of Wyckoff positions in G
-wh = [] #set of Wyckoff positions in subgroup H
-#0th element in wg or wh is the 'a' orbit, to make looping easier
-For i in range(len(Wg)): 
-	wg[i].split(wh)
-
+				#check site symmetry against wg; break if mismatch
+				xyzmap = ['','',''] #mapping needs to be unique in wh, not in wg
+				for k in range(len(wh[j].pos)):
+					#check if xyz mapping exists for wg.pos
+					#if xyz mapping is not unique for some y, abort.
+				#if unique xyz map exists, flag x as possible subset
 
 '''We can check Wh: if linked to n Wg elements,
 	then we need n atoms of Wh type'''
