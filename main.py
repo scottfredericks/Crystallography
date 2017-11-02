@@ -167,6 +167,7 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 group193 = []
 for x in text:
 	group193.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
+
 text = [
 'x,y,z', 	'-x,-y,z', 	'-x,y,-z', 	'x,-y,-z',
 'z,x,y', 	'z,-x,-y', 	'-z,-x,y', 	'-z,x,-y',
@@ -183,6 +184,7 @@ text = [
 group221 = []
 for x in text:
 	group221.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
+
 #H=185, G=186 (Water), index = 2
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, z+1/2')
 #H=185, G=186 (Water), index = 3
@@ -193,6 +195,7 @@ for x in text:
 myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 
+#generators from P-type lattice to F-type lattice
 myop1 = pymatgen.core.operations.SymmOp.from_xyz_string('x, y+1/2, z+1/2')
 myop2 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y, z+1/2')
 myop3 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y+1/2, z')
@@ -207,12 +210,21 @@ for x in group221:
 start = timer()
 #--------------Timer start
 point = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
+point1 = pymatgen.core.operations.SymmOp.from_xyz_string('0,1/2,1/2')
+point2 = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,0,1/2')
+point3 = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
 num = 0
-print("Point: "+point.as_xyz_string())
+'''print("Point: "+point.as_xyz_string())
 for x in op_stabilizer(point, group221):
 	print(x.as_xyz_string())
 	num += 1
-print("# of symmops in stab: "+str(num))
+print("# of symmops in stab: "+str(num))'''
+list1 = op_stabilizer(point3, group225)
+list2 = op_stabilizer(point2, group225)
+common = list(set(list1).intersection(list2))
+for x in common:
+	print(x.as_xyz_string())
+
 #--------------Timer stop
 end = timer()
 print("Time elapsed: "+str(end-start))
