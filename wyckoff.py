@@ -17,8 +17,8 @@ class wyck_pos:
 		#ex: 122'F 2 2 2' position k has mult 16, but only 4 pos's are listed
 		#wpos.mult =  #multiplicity of position
 		#wpos.letter =  #Wyckoff letter
-		#wpos.pos = [] #set of specific positions in orbit
-		#wpos.symm_set = [SymmOp] #set of general positions not in orbit, + (x,y,z)
+		#wpos.pos = [] #set of specific positions in orbit, SymmOp objects
+		#wpos.symm_set = [SymmOp] #stab() subset of general positions, + (x,y,z)
 		return wpos
 	def from_hm_symbol(symbol):
 		wpos = wyck_pos
@@ -42,20 +42,22 @@ class wyck_pos:
 class wyck_split(wg, wh):
 	#class to calculate and store Wyckoff splitting from G to H
 	#It is assumed wg and wh are in the same setting. Call wg.transform() first
-	indices = [[]]
-	xyzmap = [[[]]]
-	index = len(self.pos)/len(wh.pos)		
-	n_remaining = self.mult
-	temp_pos = self.pos
-	for i in range(len(wg)): #Loop over wyckpos's in G
-		For j in range(len(wh)):#Loop over wyckpos's in H
-			if x.mult =< n:
-				#check site symmetry against wg; break if mismatch
-				xyzmap = ['','',''] #mapping needs to be unique in wh, not in wg
-				for k in range(len(wh[j].pos)):
-					#check if xyz mapping exists for wg.pos
-					#if xyz mapping is not unique for some y, abort.
-				#if unique xyz map exists, flag x as possible subset
+	def __init__:
+		indices = [[]]
+		xyzmap = [[[]]]
+		index = len(wg.pos)/len(wh.pos)
+		temp_pos = wg.pos
+		for i in range(len(wg)): #Loop over wyckpos's in G
+			remaining = wg[i].mult
+			For j in range(len(wh)):#Loop over wyckpos's in H
+				if wh[j].mult =< remaining:
+					#check site symmetry against wg; break if mismatch
+					
+					xyzmap = ['','',''] #mapping needs to be unique for each j
+					for k in range(len(wh[j].pos)):
+						#check if xyz mapping exists for wg.pos
+						#if xyz mapping is not unique for some y, abort.
+					#if unique xyz map exists, flag x as possible subset
 
 '''We can check Wh: if linked to n Wg elements,
 	then we need n atoms of Wh type'''

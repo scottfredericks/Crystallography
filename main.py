@@ -19,23 +19,6 @@ def filter_site(v):
 		while w[i]>=1: w[i] -= 1
 	return w
 
-def ltransform(b, a):
-	for i in range(4):
-		for j in range(3):
-			if b[i][j] is not float: b[i][j] = float(b[i][j])
-	for i in range(3):
-		if a[i] is not float: a[i] = float(a[i])
-	c = [float(0), float(0), float(0)]
-	i = 0
-	while i < 3:
-		j = 0
-		while j < 3:
-			c[i] += b[i][j]*a[j]
-			j += 1
-		c[i] += b[3][i]
-		i += 1
-	return c
-
 def is_symmop(p1, op, tol=.01):
 	p2 = op.operate(p1)
 	dsquared = (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2
@@ -60,15 +43,6 @@ def apply_ops(p1, ops):
 				isnew = False
 		if isnew: pos.append(new)
 	return pos
-
-#Return the subset of ops which leaves the point p1 invariant
-def stabilizer(site1, ops, tol=.01):
-	stab = []
-	for i in range(len(ops)):
-		site2 = pymatgen.core.sites.PeriodicSite(site1.specie, ops[i].operate(site1.frac_coords), site1.lattice)
-		if site1.distance(site2) <= tol:
-			stab.append(ops[i])
-	return stab
 
 #Find the subsset of general Wyckoff positions corresponding to a point
 #Broken: not always a conjugacy class
@@ -95,6 +69,26 @@ def compose_ops(op1,op2):
 	v = filter_site(v)
 	new = pymatgen.core.operations.SymmOp.from_rotation_and_translation(m,v)
 	return new
+
+def site_stabilizer(site1, ops, tol=.01):
+	#Return the subset of ops which leaves the PeriodicSite site1 invariant
+	stab = []
+	for i in range(len(ops)):
+		site2 = pymatgen.core.sites.PeriodicSite(site1.specie, ops[i].operate(site1.frac_coords), site1.lattice)
+		if site1.distance(site2) <= tol:
+			stab.append(ops[i])
+	return stab
+
+def op_stabilizer(op1, ops, tol=.01):
+	#return the subset of ops which leaves a SymmOp object invariant
+	#used for finding site symmetry of special Wyckoff position elements
+	stab = []
+	for i in range(len(ops)):
+		op2 = compose_ops(ops[i], op1)
+		if np.linalg.norm(op1.affine_matrix-op2.affine_matrix) < tol:
+			stab.append(ops[i])
+	return stab
+			
 
 #map a Wyckoff set W1 to a supergroup Wyckoff set W2
 def wyckoff_set_map(W1, W2):
@@ -149,10 +143,10 @@ def naive_check(hstruct, op):
 #-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
-path = input("Relative CIF file path: ")
+'''path = input("Relative CIF file path: ")
 mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
-print("Input structure:")
-print(mystruct1)
+sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
+symmops = sga.get_symmetry_operations()'''
 
 #Find the supergroups of struct1
 #Get the transformation W,w from G to H
@@ -160,9 +154,10 @@ print(mystruct1)
 
 #test functionality
 #-----------------------------------------------------------------------
+#print("Input structure:")
+#print(mystruct1)
 #Get a list of symmetry operations for the structure
-sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
-symmops = sga.get_symmetry_operations()
+
 text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'y,-x+y,z+1/2', 'x-y,x,z+1/2', 'y,x,-z+1/2', 'x-y,-y,-z+1/2',
 		'-x,-x+y,-z+1/2', '-y,-x,-z', '-x+y,y,-z', 'x,x-y,-z',
@@ -170,7 +165,24 @@ text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
 		'-y,x-y,-z+1/2', '-x+y,-x,-z+1/2', '-y,-x,z+1/2', '-x+y,y,z+1/2',
 		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
 group193 = []
-
+for x in text:
+	group193.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
+text = [
+'x,y,z', 	'-x,-y,z', 	'-x,y,-z', 	'x,-y,-z',
+'z,x,y', 	'z,-x,-y', 	'-z,-x,y', 	'-z,x,-y',
+'y,z,x', 	'-y,z,-x', 	'y,-z,-x', 	'-y,-z,x',
+'y,x,-z', 	'-y,-x,-z',	'y,-x,z', 	'-y,x,z',
+'x,z,-y', 	'-x,z,y', 	'-x,-z,-y', 'x,-z,y',
+'z,y,-x', 	'z,-y,x', 	'-z,y,x', 	'-z,-y,-x',
+'-x,-y,-z',	'x,y,-z', 	'x,-y,z', 	'-x,y,z',
+'-z,-x,-y',	'-z,x,y', 	'z,x,-y', 	'z,-x,y',
+'-y,-z,-x',	'y,-z,x', 	'-y,z,x', 	'y,z,-x',
+'-y,-x,z', 	'y,x,z', 	'-y,x,-z', 	'y,-x,-z',
+'-x,-z,y', 	'x,-z,-y', 	'x,z,y', 	'-x,z,-y',
+'-z,-y,x', 	'-z,y,-x', 	'z,-y,-x', 	'z,y,x']
+group221 = []
+for x in text:
+	group221.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
 #H=185, G=186 (Water), index = 2
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, z+1/2')
 #H=185, G=186 (Water), index = 3
@@ -185,23 +197,22 @@ myop1 = pymatgen.core.operations.SymmOp.from_xyz_string('x, y+1/2, z+1/2')
 myop2 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y, z+1/2')
 myop3 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y+1/2, z')
 
-newops = []
-for i in range(len(symmops)):
-	newops.append(symmops[i])
-	newops.append(compose_ops(myop,symmops[i]))
-	'''newops.append(compose_ops(myop1,symmops[i]))
-	newops.append(compose_ops(myop2,symmops[i]))
-	newops.append(compose_ops(myop3,symmops[i]))'''
+group225 = []
+for x in group221:
+	group225.append(x)
+	group225.append(compose_ops(myop1,x))
+	group225.append(compose_ops(myop2,x))
+	group225.append(compose_ops(myop3,x))
 
 start = timer()
 #--------------Timer start
-for s in mystruct1.sites:
-	stab = stabilizer(s, newops)
-	print("length = " + str(len(stab)))
-	for x in stab:
-		print(x.as_xyz_string())
-print(sga.get_hall())
-	
+point = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
+num = 0
+print("Point: "+point.as_xyz_string())
+for x in op_stabilizer(point, group221):
+	print(x.as_xyz_string())
+	num += 1
+print("# of symmops in stab: "+str(num))
 #--------------Timer stop
 end = timer()
 print("Time elapsed: "+str(end-start))
