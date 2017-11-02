@@ -39,26 +39,36 @@ class wyck_pos:
 		for x in self.pos: pass
 		for x in self.symm_set: pass
 
-class wyck_split(wg, wh):
-	#class to calculate and store Wyckoff splitting from G to H
-	#It is assumed wg and wh are in the same setting. Call wg.transform() first
+'''class xyz_map:
 	def __init__:
-		indices = [[]]
-		xyzmap = [[[]]]
-		index = len(wg.pos)/len(wh.pos)
-		temp_pos = wg.pos
-		for i in range(len(wg)): #Loop over wyckpos's in G
-			remaining = wg[i].mult
-			For j in range(len(wh)):#Loop over wyckpos's in H
-				if wh[j].mult =< remaining:
-					#check site symmetry against wg; break if mismatch
-					
-					xyzmap = ['','',''] #mapping needs to be unique for each j
-					for k in range(len(wh[j].pos)):
-						#check if xyz mapping exists for wg.pos
-						#if xyz mapping is not unique for some y, abort.
-					#if unique xyz map exists, flag x as possible subset
+		for i in range(3):
+			self[i].vector = None
+			self[i].scalar = None'''
 
+class wyck_split(wg, WH, index):
+	#class to calculate and store Wyckoff splitting from wg to H
+	#It is assumed wg and Wh are in the same setting. Call wg.transform() first
+	#wg is a single wyck_pos in G; Wh is the array of all wyck_pos's in H
+	#index is the size of the general position of G divided by that of H
+	def __init__:
+		indices = []
+		xyzmap = [[]]
+		temp1 = wg.pos
+		For wh in WH:#Loop over wyckpos's wh in WH, start with largest mult.
+			temp2 = temp1
+			if wh.mult <= len(temp1): \
+			for j in range(wh.mult): #Loop over elements in wh
+				for k in range(len(wg.pos)): #loop over elements in wg
+					for k in range(3): #Loop over x,y,z coordinates
+						a = wh.pos[j].affine_matrix
+						hvector = [a[l][0], a[l][1], a[l][2]]
+						hscalar = a[l][3]
+						a = wg.pos[k].affine_matrix
+						gvector = [a[l][0], a[l][1], a[l][2]]
+						gscalar = a[l][3]
+						if vector == [0,0,0]: #if h element is a point
+						
+						else: #if h element is not a point
 '''We can check Wh: if linked to n Wg elements,
 	then we need n atoms of Wh type'''
 
