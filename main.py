@@ -88,7 +88,6 @@ def op_stabilizer(op1, ops, tol=.01):
 		if np.linalg.norm(op1.affine_matrix-op2.affine_matrix) < tol:
 			stab.append(ops[i])
 	return stab
-			
 
 #map a Wyckoff set W1 to a supergroup Wyckoff set W2
 def wyckoff_set_map(W1, W2):
@@ -185,6 +184,14 @@ group221 = []
 for x in text:
 	group221.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
 
+text = [
+'x,y,z', 	'-x,-y,z', 	'-x,y,-z', 	'x,-y,-z',
+'-x,-y,-z', 	'x,y,-z', 	'x,-y,z', 	'-x,y,z']
+group47 = []
+for x in text:
+	group47.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
+
+
 #H=185, G=186 (Water), index = 2
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, z+1/2')
 #H=185, G=186 (Water), index = 3
@@ -209,9 +216,10 @@ for x in group221:
 
 start = timer()
 #--------------Timer start
-point = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
-point1 = pymatgen.core.operations.SymmOp.from_xyz_string('0,1/2,1/2')
-point2 = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,0,1/2')
+point = pymatgen.core.operations.SymmOp.from_xyz_string('x,1/2,0')
+
+point1 = pymatgen.core.operations.SymmOp.from_xyz_string('-x,x,-x')
+point2 = pymatgen.core.operations.SymmOp.from_xyz_string('3/4,1/4,3/4')
 point3 = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
 num = 0
 '''print("Point: "+point.as_xyz_string())
@@ -219,10 +227,13 @@ for x in op_stabilizer(point, group221):
 	print(x.as_xyz_string())
 	num += 1
 print("# of symmops in stab: "+str(num))'''
-list1 = op_stabilizer(point3, group225)
-list2 = op_stabilizer(point2, group225)
-common = list(set(list1).intersection(list2))
-for x in common:
+print('point: '+str(point1.as_xyz_string()))
+list1 = op_stabilizer(point1, group221)
+for x in list1:
+	print(x.as_xyz_string())
+print('point: '+str(point2.as_xyz_string()))
+list1 = op_stabilizer(point2, group221)
+for x in list1:
 	print(x.as_xyz_string())
 
 #--------------Timer stop

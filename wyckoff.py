@@ -17,7 +17,7 @@ class wyck_pos:
 		#ex: 122'F 2 2 2' position k has mult 16, but only 4 pos's are listed
 		#wpos.mult =  #multiplicity of position
 		#wpos.letter =  #Wyckoff letter
-		#wpos.pos = [] #set of specific positions in orbit, SymmOp objects
+		#wpos.elem = [] #set of specific positions in orbit, SymmOp objects
 		#wpos.symm_set = [SymmOp] #stab() subset of general positions, + (x,y,z)
 		return wpos
 	def from_hm_symbol(symbol):
