@@ -137,15 +137,20 @@ def naive_check(hstruct, op):
 	print("Largest displacement: "+str(max_min_value))
 	return mapping
 
-
+def wyckoff_split(hall1, hall2, position):
+	'''Function to split a Wyckoff position into positions of a subgroup.
+	hall1 and hall2 are Hall numbers for the supergroup G and subgroup H,
+	respectively. position is the desired position in G to split. 0 represents
+	the "a" position.'''
+	
 #Main program
 #-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
-'''path = input("Relative CIF file path: ")
+path = input("Relative CIF file path: ")
 mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
 sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
-symmops = sga.get_symmetry_operations()'''
+
 
 #Find the supergroups of struct1
 #Get the transformation W,w from G to H

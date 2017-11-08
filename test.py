@@ -1,9 +1,10 @@
 import pymatgen
-import spglib
-import spglib._spglib as spg
+import make_sitesym as ss
 
-mystruct = pymatgen.core.structure.Structure.from_file('test.cif')
-ds = mystruct.as_dict()
-for x in ds:
-	print(x)
-#data = spg.dataset(ds['lattice'], ds['positions'], ds['numbers'], ds['hall_number'], .001, 5)
+wyckoff_positions = ss.get_wyckoff_position_operators ('database/Wyckoff.csv', 423)
+
+print("Wyckoff positions of Hall Group 423:")
+for x in wyckoff_positions:
+	for y in x:
+		op = pymatgen.core.operations.SymmOp.from_rotation_and_translation(list(y[0]), y[1]/24)
+		print(op.as_xyz_string())
