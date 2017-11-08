@@ -1,14 +1,13 @@
 '''
 Replacement file for pseuso. Now using pymatgen.
 '''
-import numpy
 import pymatgen
 import pymatgen.analysis.structure_matcher
 import pymatgen.symmetry.analyzer
 import pymatgen.symmetry.settings
 import numpy as np
 from timeit import default_timer as timer
-
+import make_sitesym
 
 #Function and class definitions
 #--------------------------
@@ -137,19 +136,54 @@ def naive_check(hstruct, op):
 	print("Largest displacement: "+str(max_min_value))
 	return mapping
 
-def wyckoff_split(hall1, hall2, position):
+def get_wyckoff_positions(hall_number):
+	'''Return wyckoff positions for a group as a 2d array of SymmOp objects.
+	1st index is position (Wyckoff letter, 0 = general position), 2nd index
+	gives elements within a Wyckoff position. Note: face positions (F/A/B/C
+	groups) ARE included.'''
+	array = []
+	wyckoff_positions = make_sitesym.get_wyckoff_position_operators('database/Wyckoff.csv', hall_number)
+	for x in wyckoff_positions:
+		temp = []
+		for y in x:
+			temp.append(pymatgen.core.operations.SymmOp.from_rotation_and_translation(list(y[0]), y[1]/24))
+		array.append(temp)
+	return array
+
+def wyckoff_split(WG, WH, position):
 	'''Function to split a Wyckoff position into positions of a subgroup.
-	hall1 and hall2 are Hall numbers for the supergroup G and subgroup H,
-	respectively. position is the desired position in G to split. 0 represents
-	the "a" position.'''
-	
+	WG and WH are sets of Wyckoff positions for the supergroup G and subgroup H,
+	respectively. position is the desired position in G to split: 0 represents
+	the general position.'''
+	wg = WG[position]
+	gsymm = [] #H site symmetry for elements of wg
+	for gel in wg:
+		gsymm.append(op_stabilizer(gel, WH[0]))
+	hsymm_array = [] #array of site symmetries for elements of WH
+	for wh in WH:
+		hsymm = []
+		for hel in wh:
+			hsymm.append(op_stabilizer(hel, WH[0]))
+		hsymm_array.append(hsymm)
+	mapping = []
+	for gel in wg:
+		For wh in WH:#Loop over wyckpos's wh in WH, start with largest mult.
+			temp2 = temp1
+			if wh.mult <= len(temp1): \
+			for j in range(wh.mult): #Loop over elements in wh
+				for k in range(len(wg.pos)): #loop over elements in wg
+
+def wyckoff_split_from_hall_number(hall1, hall2, position):
+	pos1 = get_wyckoff_positions(hall1)
+	pos2 = get_wyckoff_positions(hall2)
+	return wyckoff_split(pos1, pos2, position)
 #Main program
 #-------------------------------------------
 #import our base structure from a cif file
 #struct1 will be stored as a pymatgen.core.structure Structure class object
-path = input("Relative CIF file path: ")
+'''path = input("Relative CIF file path: ")
 mystruct1 = pymatgen.core.structure.Structure.from_file(path, primitive=False, sort=False, merge_tol=0.01)
-sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)
+sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)'''
 
 
 #Find the supergroups of struct1
@@ -221,26 +255,7 @@ for x in group221:
 
 start = timer()
 #--------------Timer start
-point = pymatgen.core.operations.SymmOp.from_xyz_string('x,1/2,0')
-
-point1 = pymatgen.core.operations.SymmOp.from_xyz_string('-x,x,-x')
-point2 = pymatgen.core.operations.SymmOp.from_xyz_string('3/4,1/4,3/4')
-point3 = pymatgen.core.operations.SymmOp.from_xyz_string('1/2,1/2,0')
-num = 0
-'''print("Point: "+point.as_xyz_string())
-for x in op_stabilizer(point, group221):
-	print(x.as_xyz_string())
-	num += 1
-print("# of symmops in stab: "+str(num))'''
-print('point: '+str(point1.as_xyz_string()))
-list1 = op_stabilizer(point1, group221)
-for x in list1:
-	print(x.as_xyz_string())
-print('point: '+str(point2.as_xyz_string()))
-list1 = op_stabilizer(point2, group221)
-for x in list1:
-	print(x.as_xyz_string())
-
+wyckoff_split_from_hall_number(185, 200, 3)
 #--------------Timer stop
 end = timer()
 print("Time elapsed: "+str(end-start))
