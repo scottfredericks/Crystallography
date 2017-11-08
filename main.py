@@ -43,24 +43,6 @@ def apply_ops(p1, ops):
 		if isnew: pos.append(new)
 	return pos
 
-#Find the subsset of general Wyckoff positions corresponding to a point
-#Broken: not always a conjugacy class
-def wyckoff_set(p1, ops, tol=.01):
-	pos = []
-	pos.append(pymatgen.core.operations.SymmOp.from_xyz_string('x,y,z').operate(p1))
-	wset = []
-	wset.append(pymatgen.core.operations.SymmOp.from_xyz_string('x,y,z'))
-	for x in ops:
-		new = x.operate(p1)
-		isnew = True
-		for old in pos:
-			if dsquared(old,new) < tol**2:
-				isnew = False
-		if isnew:
-			pos.append(new)
-			wset.append(x)
-	return wset
-
 def compose_ops(op1,op2):
 	#Apply transform op1 to op2, then normalize
 	m = np.dot(op1.rotation_matrix,op2.rotation_matrix)
@@ -87,20 +69,6 @@ def op_stabilizer(op1, ops, tol=.01):
 		if np.linalg.norm(op1.affine_matrix-op2.affine_matrix) < tol:
 			stab.append(ops[i])
 	return stab
-
-#map a Wyckoff set W1 to a supergroup Wyckoff set W2
-def wyckoff_set_map(W1, W2):
-	if len(W2)<len(W1): print("Error: cannot map to a smaller set")
-	mapping = []
-	for i in range(len(W1)):
-		for j in range(len(W2)):
-			if W1[i] == W2[j]:
-				mapingp.append(j)
-				break
-		if mapping[i] == []:
-			print("Error: could find map.")
-			break
-	return mapping
 
 #Brute-force check whether or not an operation is pseudosmmetric
 #with respect to a structure hstruct. Return a displacement map from point i to
@@ -155,23 +123,35 @@ def wyckoff_split(WG, WH, position):
 	WG and WH are sets of Wyckoff positions for the supergroup G and subgroup H,
 	respectively. position is the desired position in G to split: 0 represents
 	the general position.'''
+	ops = WH[0] #General site-symmetries of H
 	wg = WG[position]
 	gsymm = [] #H site symmetry for elements of wg
-	for gel in wg:
-		gsymm.append(op_stabilizer(gel, WH[0]))
+	for gel in wg: #gel are elements in wg
+		gsymm.append(op_stabilizer(gel, ops))
 	hsymm_array = [] #array of site symmetries for elements of WH
 	for wh in WH:
 		hsymm = []
 		for hel in wh:
-			hsymm.append(op_stabilizer(hel, WH[0]))
+			hsymm.append(op_stabilizer(hel, ops))
 		hsymm_array.append(hsymm)
-	mapping = []
+
+	mapping = [] #maps gel's to hel's
 	for gel in wg:
-		For wh in WH:#Loop over wyckpos's wh in WH, start with largest mult.
-			temp2 = temp1
-			if wh.mult <= len(temp1): \
-			for j in range(wh.mult): #Loop over elements in wh
-				for k in range(len(wg.pos)): #loop over elements in wg
+		found = False
+		for i in range(len(WH)):
+			wh = WH[i]
+			for j in range(len(wh)):
+				hel = wh[j]
+				if op_stabilizer(gel, ops) == op_stabilizer(hel, ops):
+					found = True
+					mapping.append([i, j])
+					break
+				if found == True: break
+			if found == True: break
+		if found == False:
+			print("Error: Could not find wyckoff mapping.")
+			mapping.append("Error")
+	return mapping
 
 def wyckoff_split_from_hall_number(hall1, hall2, position):
 	pos1 = get_wyckoff_positions(hall1)
@@ -254,11 +234,13 @@ for x in group221:
 	group225.append(compose_ops(myop3,x))
 
 start = timer()
+print("===================Timer started===================")
 #--------------Timer start
-wyckoff_split_from_hall_number(185, 200, 3)
+#H-M groups 225(Fm-3m) and 221(Pm-3m), for 1a position in 225
+print(wyckoff_split_from_hall_number(523, 517, 11))
 #--------------Timer stop
 end = timer()
-print("Time elapsed: "+str(end-start))
+print("==========Time elapsed: "+str(end-start)+"==========")
 
 
 
