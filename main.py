@@ -9,6 +9,10 @@ import numpy as np
 from timeit import default_timer as timer
 import make_sitesym
 
+#Constants
+#--------------------------
+letters = 'abcdefghijklmnopqrstuvwxyz'
+
 #Function and class definitions
 #--------------------------
 def filter_site(v):
@@ -45,10 +49,10 @@ def apply_ops(p1, ops):
 
 def compose_ops(op1,op2):
 	#Apply transform op1 to op2, then normalize
-	m = np.dot(op1.rotation_matrix,op2.rotation_matrix)
-	v = op1.operate(op2.translation_vector)
-	v = filter_site(v)
-	new = pymatgen.core.operations.SymmOp.from_rotation_and_translation(m,v)
+	R = np.dot(op1.rotation_matrix,op2.rotation_matrix)
+	t = op1.operate(op2.translation_vector)
+	t = filter_site(t)
+	new = pymatgen.core.operations.SymmOp.from_rotation_and_translation(R,t)
 	return new
 
 def site_stabilizer(site1, ops, tol=.01):
@@ -60,7 +64,7 @@ def site_stabilizer(site1, ops, tol=.01):
 			stab.append(ops[i])
 	return stab
 
-def op_stabilizer(op1, ops, tol=.01):
+def op_stabilizer(op1, ops, tol=.001):
 	#return the subset of ops which leaves a SymmOp object invariant
 	#used for finding site symmetry of special Wyckoff position elements
 	stab = []
@@ -114,48 +118,70 @@ def get_wyckoff_positions(hall_number):
 	for x in wyckoff_positions:
 		temp = []
 		for y in x:
-			temp.append(pymatgen.core.operations.SymmOp.from_rotation_and_translation(list(y[0]), y[1]/24))
+			temp.append(pymatgen.core.operations.SymmOp.from_rotation_and_translation(list(y[0]), filter_site(y[1]/24)))
 		array.append(temp)
 	return array
 
-def wyckoff_split(WG, WH, position):
+def wyckoff_split(WG, WH, letter):
 	'''Function to split a Wyckoff position into positions of a subgroup.
 	WG and WH are sets of Wyckoff positions for the supergroup G and subgroup H,
-	respectively. position is the desired position in G to split: 0 represents
-	the general position.'''
-	ops = WH[0] #General site-symmetries of H
+	respectively. letter is the position in G you wish to split.'''
+	gops = WG[0]
+	hops = WH[0] #General site-symmetries of H
+	index = len(gops)/len(hops)
+	position = len(WG) - 1 - letters.find(letter)
 	wg = WG[position]
-	gsymm = [] #H site symmetry for elements of wg
-	for gel in wg: #gel are elements in wg
-		gsymm.append(op_stabilizer(gel, ops))
+	gsymm = [] #H site symmetry for elements of wg with respect to H
+	for i in range(len(wg)):
+		gsymm.append(op_stabilizer(wg[i], hops))
+	end = timer()
+	print("==========Time elapsed: "+str(end-start)+"==========")
 	hsymm_array = [] #array of site symmetries for elements of WH
 	for wh in WH:
 		hsymm = []
 		for hel in wh:
-			hsymm.append(op_stabilizer(hel, ops))
+			hsymm.append(op_stabilizer(hel, hops))
 		hsymm_array.append(hsymm)
-
-	mapping = [] #maps gel's to hel's
-	for gel in wg:
+	mapping = []
+	T, t = list([None, None, None]), list([None, None, None])
+	counter = 0
+	for i in range(len(wg)):
+		gel = wg[i]
+		X, x = gel.rotation_matrix, filter_site(gel.translation_vector)
 		found = False
-		for i in range(len(WH)):
-			wh = WH[i]
-			for j in range(len(wh)):
-				hel = wh[j]
-				if op_stabilizer(gel, ops) == op_stabilizer(hel, ops):
-					found = True
-					mapping.append([i, j])
-					break
-				if found == True: break
-			if found == True: break
+		for j in range(len(WH)):
+			wh = WH[j]
+			if len(gsymm[i]) == len(hsymm_array[j][0]):
+				for k in range(len(wh)):
+					if gsymm[i] == hsymm_array[j][k]:
+						#Try finding a map
+						#loop over x,y,z
+						hel = wh[k]
+						Y, y = hel.rotation_matrix, filter_site(hel.translation_vector)
+						canmap = True
+						for l in range(3):
+							if list(X[l]) == list([0,0,0]):
+								if x[l] != y[l]:
+									canmap = False
+									break
+						if canmap:
+							found = True
+							mapping.append(j)
+					if found: break
+			if found: break
 		if found == False:
 			print("Error: Could not find wyckoff mapping.")
+			print("i: "+str(i)+", j: "+str(j)+", k: "+str(k))
 			mapping.append("Error")
-	return mapping
+	letter_mapping = []
+	for x in mapping:
+		letter_mapping.append(letters[len(WH)-1-x])
+	return letter_mapping
 
 def wyckoff_split_from_hall_number(hall1, hall2, position):
 	pos1 = get_wyckoff_positions(hall1)
 	pos2 = get_wyckoff_positions(hall2)
+	#Need to perform transformation from group 1->2
 	return wyckoff_split(pos1, pos2, position)
 #Main program
 #-------------------------------------------
@@ -174,70 +200,15 @@ sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)'''
 #-----------------------------------------------------------------------
 #print("Input structure:")
 #print(mystruct1)
-#Get a list of symmetry operations for the structure
 
-text = ['x,y,z', '-y,x-y,z', '-x+y,-x,z', '-x,-y,z+1/2',
-		'y,-x+y,z+1/2', 'x-y,x,z+1/2', 'y,x,-z+1/2', 'x-y,-y,-z+1/2',
-		'-x,-x+y,-z+1/2', '-y,-x,-z', '-x+y,y,-z', 'x,x-y,-z',
-		'-x,-y,-z', 'y,-x+y,-z', 'x-y,x,-z', 'x,y,-z+1/2',
-		'-y,x-y,-z+1/2', '-x+y,-x,-z+1/2', '-y,-x,z+1/2', '-x+y,y,z+1/2',
-		'x,x-y,z+1/2', 'y,x,z', 'x-y,-y,z', '-x,-x+y,z']
-group193 = []
-for x in text:
-	group193.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
-
-text = [
-'x,y,z', 	'-x,-y,z', 	'-x,y,-z', 	'x,-y,-z',
-'z,x,y', 	'z,-x,-y', 	'-z,-x,y', 	'-z,x,-y',
-'y,z,x', 	'-y,z,-x', 	'y,-z,-x', 	'-y,-z,x',
-'y,x,-z', 	'-y,-x,-z',	'y,-x,z', 	'-y,x,z',
-'x,z,-y', 	'-x,z,y', 	'-x,-z,-y', 'x,-z,y',
-'z,y,-x', 	'z,-y,x', 	'-z,y,x', 	'-z,-y,-x',
-'-x,-y,-z',	'x,y,-z', 	'x,-y,z', 	'-x,y,z',
-'-z,-x,-y',	'-z,x,y', 	'z,x,-y', 	'z,-x,y',
-'-y,-z,-x',	'y,-z,x', 	'-y,z,x', 	'y,z,-x',
-'-y,-x,z', 	'y,x,z', 	'-y,x,-z', 	'y,-x,-z',
-'-x,-z,y', 	'x,-z,-y', 	'x,z,y', 	'-x,z,-y',
-'-z,-y,x', 	'-z,y,-x', 	'z,-y,-x', 	'z,y,x']
-group221 = []
-for x in text:
-	group221.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
-
-text = [
-'x,y,z', 	'-x,-y,z', 	'-x,y,-z', 	'x,-y,-z',
-'-x,-y,-z', 	'x,y,-z', 	'x,-y,z', 	'-x,y,z']
-group47 = []
-for x in text:
-	group47.append(pymatgen.core.operations.SymmOp.from_xyz_string(x))
-
-
-#H=185, G=186 (Water), index = 2
-#myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, z+1/2')
-#H=185, G=186 (Water), index = 3
-#myop = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/3, y+2/3, z')
-#H=185, G=193 (Water), index = 2
-#myop = pymatgen.core.operations.SymmOp.from_xyz_string('-x, -x+y, 1/2-z')
-#H=38, G=65 (BaTiO3)
-myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
 #myop = pymatgen.core.operations.SymmOp.from_xyz_string('x, y, -z')
-
-#generators from P-type lattice to F-type lattice
-myop1 = pymatgen.core.operations.SymmOp.from_xyz_string('x, y+1/2, z+1/2')
-myop2 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y, z+1/2')
-myop3 = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2, y+1/2, z')
-
-group225 = []
-for x in group221:
-	group225.append(x)
-	group225.append(compose_ops(myop1,x))
-	group225.append(compose_ops(myop2,x))
-	group225.append(compose_ops(myop3,x))
 
 start = timer()
 print("===================Timer started===================")
 #--------------Timer start
-#H-M groups 225(Fm-3m) and 221(Pm-3m), for 1a position in 225
-print(wyckoff_split_from_hall_number(523, 517, 11))
+#H-M groups 225(Fm-3m)=523, and 221(Pm-3m)=517, for 1a position in 225
+print(wyckoff_split_from_hall_number(523, 517, 'h'))
+
 #--------------Timer stop
 end = timer()
 print("==========Time elapsed: "+str(end-start)+"==========")
