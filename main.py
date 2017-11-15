@@ -166,17 +166,62 @@ def wyckoff_split(WG, WH, letter):
 									break
 						if canmap:
 							found = True
-							mapping.append(j)
+							mapping.append([j])
 					if found: break
 			if found: break
 		if found == False:
 			print("Error: Could not find wyckoff mapping.")
 			print("i: "+str(i)+", j: "+str(j)+", k: "+str(k))
 			mapping.append("Error")
-	letter_mapping = []
-	for x in mapping:
-		letter_mapping.append(letters[len(WH)-1-x])
-	return letter_mapping
+	
+	#Using position-position mapping, find exact transformations
+	known_maps = []
+	for i in range(len(wg)):
+		gel = wg[i]
+		wh = WH[mapping[i][0]]
+		if known_maps == []:
+			T = []
+			t = []
+			Y, y = gel.rotation_matrix, filter_site(hel.translation_vector)
+			X, x = wh[0].rotation_matrix, filter_site(wh[0].translation_vector)
+			for j in range(3):
+				t.append(x[j]-y[j])
+				if X[j][j] == 1:
+					T.append(Y[j])
+				elif X[j] = [0,0,0]:
+					T.append([0,0,0])
+				else:
+					for k in range(3):
+						if X[j][k] == 1:
+							
+					 
+			trans = pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
+			known_maps.append(trans)
+			mapping[i].append(0)
+			mapping[i].append(trans)
+		else:
+			found = False
+			for j in range(len(known_maps)):
+				op =  known_maps[j]
+				for k in range(len(wh)):
+					hel = wh[k]
+					generated = compose_ops(op, hel)
+					if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .001:
+						found = true
+						
+						known_maps.append(op)
+						mapping[i].append(k)
+						mapping[i].append(op)
+					if found: break
+				if found: break
+			if not found: pass
+	print(wg[0].as_xyz_string())
+	print(wh[0].as_xyz_string())
+	
+	#return letters instead of integers
+	for i in range(len(mapping)):
+		mapping[i][0] = letters[len(WH)-1-mapping[i][0]]
+	return mapping
 
 def wyckoff_split_from_hall_number(hall1, hall2, position):
 	pos1 = get_wyckoff_positions(hall1)
@@ -206,7 +251,7 @@ sga = pymatgen.symmetry.analyzer.SpacegroupAnalyzer(mystruct1)'''
 start = timer()
 print("===================Timer started===================")
 #--------------Timer start
-#H-M groups 225(Fm-3m)=523, and 221(Pm-3m)=517, for 1a position in 225
+#H-M groups 225(Fm-3m)=523 (supergroup), and 221(Pm-3m)=517
 print(wyckoff_split_from_hall_number(523, 517, 'h'))
 
 #--------------Timer stop
