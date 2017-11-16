@@ -135,7 +135,6 @@ def wyckoff_split(WG, WH, letter):
 	for i in range(len(wg)):
 		gsymm.append(op_stabilizer(wg[i], hops))
 	end = timer()
-	print("==========Time elapsed: "+str(end-start)+"==========")
 	hsymm_array = [] #array of site symmetries for elements of WH
 	for wh in WH:
 		hsymm = []
