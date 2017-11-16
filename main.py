@@ -178,73 +178,47 @@ def wyckoff_split(WG, WH, letter):
 	for i in range(len(wg)):
 		gel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wg[i].rotation_matrix, filter_site(wg[i].translation_vector))
 		wh = WH[mapping[i][0]]
-		if known_maps == []:
-			hel = wh[0]			
-			A, a = hel.rotation_matrix, hel.translation_vector
-			B, b = gel.rotation_matrix, gel.translation_vector
-			T = []
-			t = []
-			for j in range(3):
-				if A[j][j] == 1:
-					T.append(B[j])
-					t.append(b[j]-a[j])
-				elif A[j][j] == -1:
-					T.append(-1*B[j])
-					t.append(-(b[j]-a[j]))
-				else:
-					t.append(0)
-					if j == 0:
-						T.append([1,0,0])
-					elif j == 1:
-						T.append([0,1,0])
-					elif j == 2:
-						T.append([0,0,1])
-			trans=pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
-			known_maps.append(trans)
-			mapping[i].append(0)
-			mapping[i].append(trans)
-		else:
-			found = False
-			for j in range(len(known_maps)):
-				op =  known_maps[j]
-				for k in range(len(wh)):
-					hel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wh[k].rotation_matrix,filter_site(wh[k].translation_vector))
-					generated = compose_ops(hel, op)
-					if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
-						found = True
-						mapping[i].append(k)
-						mapping[i].append(op)
-					if found: break
+		found = False
+		for j in range(len(known_maps)):
+			op =  known_maps[j]
+			for k in range(len(wh)):
+				hel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wh[k].rotation_matrix,filter_site(wh[k].translation_vector))
+				generated = compose_ops(hel, op)
+				if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
+					found = True
+					mapping[i].append(k)
+					mapping[i].append(op)
 				if found: break
-			if not found:
-				B, b = gel.rotation_matrix, gel.translation_vector
-				for k in range(len(wh)):
-					hel = wh[k]
-					A, a = hel.rotation_matrix, hel.translation_vector
-					t = []
-					T = []
-					for j in range(3):
-						if A[j][j] == 1:
-							T.append(B[j])
-							t.append(b[j]-a[j])
-						elif A[j][j] == -1:
-							T.append(-1*B[j])
-							t.append(-(b[j]-a[j]))
-						else:
-							t.append(0)
-							if j == 0:
-								T.append([1,0,0])
-							elif j == 1:
-								T.append([0,1,0])
-							elif j == 2:
-								T.append([0,0,1])
-					trans = pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
-					generated = compose_ops(hel, trans)
-					if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
-						known_maps.append(trans)
-						mapping[i].append(k)
-						mapping[i].append(trans)
-						break
+			if found: break
+		if not found:
+			B, b = gel.rotation_matrix, gel.translation_vector
+			for k in range(len(wh)):
+				hel = wh[k]
+				A, a = hel.rotation_matrix, hel.translation_vector
+				t = []
+				T = []
+				for j in range(3):
+					if A[j][j] == 1:
+						T.append(B[j])
+						t.append(b[j]-a[j])
+					elif A[j][j] == -1:
+						T.append(-1*B[j])
+						t.append(-(b[j]-a[j]))
+					else:
+						t.append(0)
+						if j == 0:
+							T.append([1,0,0])
+						elif j == 1:
+							T.append([0,1,0])
+						elif j == 2:
+							T.append([0,0,1])
+				trans = pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
+				generated = compose_ops(hel, trans)
+				if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
+					known_maps.append(trans)
+					mapping[i].append(k)
+					mapping[i].append(trans)
+					break
 	
 	#return letters instead of integers
 	for i in range(len(mapping)):
