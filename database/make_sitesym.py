@@ -7,8 +7,8 @@ Modified by Scott Fredericks for python 3 compatibility.
 '''
 
 import numpy as np
-import hall2operations as h2o
-import make_Wyckoff_db as wdb
+import database.hall2operations as h2o
+import database.make_Wyckoff_db as wdb
 
 characters = "abcdefghijklmnopqrstuvwxyz"
 
