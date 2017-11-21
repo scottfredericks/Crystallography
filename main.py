@@ -1,5 +1,25 @@
 '''
-Replacement file for pseuso. Now using pymatgen.
+Scott Fredericks, 2017
+UNLV department of Physics
+Advisor: Qiang Zhu
+-----------------------------------
+Code for finding pseudosymmetry in crystal structures. Input files may be CIF
+or POSCAR. In general, "G" represents the supergroup/potential pseudosymmetry
+group, while "H" represents the subgroup/the space group of the provided
+structure. The algorithm for finding pseudosymmetry is as follows:
+1. Obtain the spacegroup (H) information for the provided structure (from file)
+2. Determine the chain of minimal supergroups G, with transformation matrices
+3. Find the splitting of the Wyckoff positions from G to H
+4. If the Wyckoff splitting meets certain criteria, map each atomic species
+	into a new Wyckoff position in G (multiple mappings may be possible)
+5. Determine the largest displacement produced by the mapping. If the
+	displacement is smaller than a given tolerance, the supergroup is flagged
+	as pseudosymmetric
+-----------------------------------
+Dependencies:
+pymatgen (http://pymatgen.org/)
+numpy (http://www.numpy.org/)
+pyspglib (https://atztogo.github.io/spglib/python-spglib.html#python-spglib)
 '''
 import sys
 import pymatgen
@@ -86,13 +106,14 @@ def wyckoff_split(WG, WH, letter):
 	mapping = []
 	known_maps = []
 	for i in range(len(wg)):
+		#Loop over elements in the G Wyckoff Position
 		gel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wg[i].rotation_matrix, filter_site(wg[i].translation_vector))
 		found = False
-		for l in range(len(WH)):
-			wh = WH[l]
-			if len(gsymm[i]) == len(hsymm_array[l][0]):
-				for j in range(len(known_maps)):
-					op =  known_maps[j]
+		for j in range(len(known_maps)):
+			op =  known_maps[j]
+			for l in range(len(WH)):
+				wh = WH[l]
+				if len(gsymm[i]) == len(hsymm_array[l][0]):
 					for k in range(len(wh)):
 						hel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wh[k].rotation_matrix,filter_site(wh[k].translation_vector))
 						generated = compose_ops(hel, op)
@@ -102,8 +123,12 @@ def wyckoff_split(WG, WH, letter):
 							mapping[i].append(k)
 							mapping[i].append(op)
 						if found: break
-					if found: break
-				if not found:
+			if found: break
+		if not found:
+			for l in range(len(WH)):
+				#Loop over Wyckoff positions in H
+				wh = WH[l]
+				if len(gsymm[i]) == len(hsymm_array[l][0]):
 					B, b = gel.rotation_matrix, filter_site(gel.translation_vector)
 					for k in range(len(wh)):
 						hel = wh[k]
@@ -134,7 +159,6 @@ def wyckoff_split(WG, WH, letter):
 							mapping[i].append(k)
 							mapping[i].append(trans)
 							break
-			if found: break
 		if not found:
 			print("Error: mapping not found for i = "+str(i))
 			print(gel.as_xyz_string())
