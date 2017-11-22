@@ -125,43 +125,67 @@ def wyckoff_split(WG, WH, letter):
 						if found: break
 			if found: break
 		if not found:
+			B, b = gel.rotation_matrix, filter_site(gel.translation_vector)
 			for l in range(len(WH)):
 				#Loop over Wyckoff positions in H
 				wh = WH[l]
 				if len(gsymm[i]) == len(hsymm_array[l][0]):
-					B, b = gel.rotation_matrix, filter_site(gel.translation_vector)
 					for k in range(len(wh)):
-						hel = wh[k]
-						A, a = hel.rotation_matrix, filter_site(hel.translation_vector)
-						t = []
-						T = []
-						for j in range(3):
-							if A[j][j] == 1:
-								T.append(B[j])
-								t.append(b[j]-a[j])
-							elif A[j][j] == -1:
-								T.append(-1*B[j])
-								t.append(-(b[j]-a[j]))
-							else:
-								t.append(0)
-								if j == 0:
-									T.append([1,0,0])
-								elif j == 1:
-									T.append([0,1,0])
-								elif j == 2:
-									T.append([0,0,1])
-						trans = pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
-						generated = compose_ops(hel, trans)
-						if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
-							found = True
-							known_maps.append(trans)
-							mapping.append([l])
-							mapping[i].append(k)
-							mapping[i].append(trans)
-							break
+						if gsymm[i] == hsymm_array[l][k]:
+							hel = wh[k]
+							A, a = hel.rotation_matrix, filter_site(hel.translation_vector)
+							t = []
+							T = []
+							for j in range(3):
+								if A[j][j] == 1:
+									T.append(B[j])
+									t.append(b[j]-a[j])
+								elif A[j][j] == -1:
+									T.append(-1*B[j])
+									t.append(-(b[j]-a[j]))
+								else:
+									t.append(0)
+									if j == 0:
+										T.append([1,0,0])
+									elif j == 1:
+										T.append([0,1,0])
+									elif j == 2:
+										T.append([0,0,1])
+							trans = pymatgen.core.operations.SymmOp.from_rotation_and_translation(T,t)
+							generated = compose_ops(hel, trans)
+							if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
+								found = True
+								known_maps.append(trans)
+								mapping.append([l])
+								mapping[i].append(k)
+								mapping[i].append(trans)
+								break
 		if not found:
-			print("Error: mapping not found for i = "+str(i))
-			print(gel.as_xyz_string())
+			mapping.append("missing")
+	for i in range(len(wg)):
+		#Loop over elements in the G Wyckoff Position
+		if mapping[i] == "missing":
+			found = False
+			gel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wg[i].rotation_matrix, filter_site(wg[i].translation_vector))
+			found = False
+			for j in range(len(known_maps)):
+				op =  known_maps[j]
+				for l in range(len(WH)):
+					wh = WH[l]
+					if len(gsymm[i]) == len(hsymm_array[l][0]):
+						for k in range(len(wh)):
+							hel = pymatgen.core.operations.SymmOp.from_rotation_and_translation(wh[k].rotation_matrix,filter_site(wh[k].translation_vector))
+							generated = compose_ops(hel, op)
+							if np.linalg.norm(generated.affine_matrix-gel.affine_matrix) < .01:
+								found = True
+								mapping[i] = [l]
+								mapping[i].append(k)
+								mapping[i].append(op)
+							if found: break
+				if found: break
+			if not found:
+				print("Error: mapping not found for i = "+str(i))
+
 	#return letters instead of integers
 	for i in range(len(mapping)):
 		mapping[i][0] = letters[len(WH)-1-mapping[i][0]]
@@ -204,9 +228,16 @@ if letter not in letters:
 	print("Not a valid letter.")
 	sys.exit()
 array = wyckoff_split_from_hall_number(supergroup, group, letter)
+
 for x in array:
 	print(x[0]+", "+str(x[1])+", ("+x[2].as_xyz_string()+")")
 print("(Letter, element # in subgroup Wyckoff position, mapping)")
+
+'''gel = pymatgen.core.operations.SymmOp.from_xyz_string('0,x+1/2,1/2')
+hel = pymatgen.core.operations.SymmOp.from_xyz_string('0,x,1/2')
+trans = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2,y,z')
+print(compose_ops(hel, trans).as_xyz_string())'''
+
 '''Useful functions
 pymatgen.symmetry.groups.SpaceGroup.from_int_number(#)
 pymatgen.symmetry.groups.get_symm_data()['maximal_subgroups']
