@@ -29,10 +29,11 @@ import pymatgen.symmetry.settings
 import numpy as np
 from timeit import default_timer as timer
 import database.make_sitesym as make_sitesym
+import pandas as pd
 
 #Constants
 #--------------------------
-letters = 'abcdefghijklmnopqrstuvwxyz'
+letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 #Function and class definitions
 #--------------------------
