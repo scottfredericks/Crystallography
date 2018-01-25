@@ -5,7 +5,7 @@ Advisor: Qiang Zhu
 -----------------------------------
 Code for finding pseudosymmetry in crystal structures. Input files may be CIF
 or POSCAR. In general, "G" represents the supergroup/potential pseudosymmetry
-group, while "H" represents the subgroup/the space group of the provided
+group, while "H" represents the subgroup/space group of the provided
 structure. The algorithm for finding pseudosymmetry is as follows:
 1. Obtain the spacegroup (H) information for the provided structure (from file)
 2. Determine the chain of minimal supergroups G, with transformation matrices
@@ -30,6 +30,8 @@ import numpy as np
 from timeit import default_timer as timer
 import database.make_sitesym as make_sitesym
 import pandas as pd
+import database.hall as hall
+#import transform
 
 #Constants
 #--------------------------
@@ -51,6 +53,33 @@ def compose_ops(op1,op2):
 	t = filter_site(t)
 	new = pymatgen.core.operations.SymmOp.from_rotation_and_translation(R,t)
 	return new
+
+def lattice_transformation(letter1, letter2):
+	t = {
+		'A': np.array([[1, 0, 0],
+					[0, 1/2, -1/2],
+					[0, 1/2, 1/2]]),
+		'C': np.array([[1/2, 1/2, 0],
+					[-1/2, 1/2, 0],
+					[2/3, -1/3, -1/3]]),
+		'R': np.array([[2/3, -1/3, -1/3],
+					[1/3, 1/3, -2/3],
+					[1/3, 1/3, 1/3]]),
+		'I': np.array([[-1/2, 1/2, 1/2],
+					[1/2, -1/2, 1/2],
+					[1/2, 1/2, -1/2]]),
+		'F': np.array([[0, 1/2, 1/2],
+					[1/2, 0, 1/2],
+					[1/2, 1/2, 0]]),
+		'P': np.array([[1, 0, 0],
+					[0, 1, 0],
+					[0, 0, 1]])
+		}
+	P1 = pymatgen.core.operations.SymmOp.from_rotation_and_translation(t[letter1], [0,0,0])
+	P2 = pymatgen.core.operations.SymmOp.from_rotation_and_translation(t[letter2], [0,0,0]).inverse
+	P = compose_ops(P1, P2)
+	Q = P.inverse
+	return Q
 
 def site_stabilizer(site1, ops, tol=.01):
 	#Return the subset of ops which leaves the PeriodicSite site1 invariant
@@ -197,6 +226,15 @@ def wyckoff_split_from_hall_number(hall1, hall2, position):
 	pos2 = get_wyckoff_positions(hall2)
 	#TODO find and perform transformation from group 1->2
 	return wyckoff_split(pos1, pos2, position)
+
+def wyckoff_split_from_hm_number(num1, num2, position):
+	hall1 = hall.hall_from_hm(num1)
+	hall2 = hall.hall_from_hm(num2)
+	pos1 = get_wyckoff_positions(hall1)
+	pos2 = get_wyckoff_positions(hall2)
+	#TODO find and perform transformation from group 1->2
+	return wyckoff_split(pos1, pos2, position)
+
 #Main program
 #-------------------------------------------
 #import our base structure from a cif file
@@ -222,22 +260,17 @@ start = timer()
 print("===================Timer started===================")
 #--------------Timer start
 #H-M groups 225(Fm-3m)=523 (supergroup), and 221(Pm-3m)=517
-supergroup, group = 523, 517
+supergroup, group = 225, 221
 print("Splitting of Wyckoff position from supergroup "+str(supergroup)+" into group "+str(group))
 letter = input("letter (in supergroup): ")
 if letter not in letters:
 	print("Not a valid letter.")
 	sys.exit()
-array = wyckoff_split_from_hall_number(supergroup, group, letter)
+array = wyckoff_split_from_hm_number(supergroup, group, letter)
 
 for x in array:
 	print(x[0]+", "+str(x[1])+", ("+x[2].as_xyz_string()+")")
 print("(Letter, element # in subgroup Wyckoff position, mapping)")
-
-'''gel = pymatgen.core.operations.SymmOp.from_xyz_string('0,x+1/2,1/2')
-hel = pymatgen.core.operations.SymmOp.from_xyz_string('0,x,1/2')
-trans = pymatgen.core.operations.SymmOp.from_xyz_string('x+1/2,y,z')
-print(compose_ops(hel, trans).as_xyz_string())'''
 
 '''Useful functions
 pymatgen.symmetry.groups.SpaceGroup.from_int_number(#)
