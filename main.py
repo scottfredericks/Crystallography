@@ -61,7 +61,7 @@ def lattice_transformation(letter1, letter2):
 					[0, 1/2, 1/2]]),
 		'C': np.array([[1/2, 1/2, 0],
 					[-1/2, 1/2, 0],
-					[2/3, -1/3, -1/3]]),
+					[0, 0, 1]]),
 		'R': np.array([[2/3, -1/3, -1/3],
 					[1/3, 1/3, -2/3],
 					[1/3, 1/3, 1/3]]),
@@ -259,7 +259,7 @@ print(mystruct1)'''
 start = timer()
 print("===================Timer started===================")
 #--------------Timer start
-#H-M groups 225(Fm-3m)=523 (supergroup), and 221(Pm-3m)=517
+'''#H-M groups 225(Fm-3m)=523 (supergroup), and 221(Pm-3m)=517
 supergroup, group = 225, 221
 print("Splitting of Wyckoff position from supergroup "+str(supergroup)+" into group "+str(group))
 letter = input("letter (in supergroup): ")
@@ -270,7 +270,11 @@ array = wyckoff_split_from_hm_number(supergroup, group, letter)
 
 for x in array:
 	print(x[0]+", "+str(x[1])+", ("+x[2].as_xyz_string()+")")
-print("(Letter, element # in subgroup Wyckoff position, mapping)")
+print("(Letter, element # in subgroup Wyckoff position, mapping)")'''
+
+letter1 = input("First letter: ")
+letter2 = input("Second letter: ")
+print(lattice_transformation(letter1, letter2))
 
 '''Useful functions
 pymatgen.symmetry.groups.SpaceGroup.from_int_number(#)

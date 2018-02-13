@@ -235,7 +235,6 @@ hall_numbers = [0, 1,
 #obverse setting triple hexagonal axes for R space groups
 #assumes unique axis b for (a or b or c) Hall symbols
 
-#TODO: fill out array, keeping in mind default settings
 #TODO: incorporate non-standard setting transformations
 def hall_from_hm(num):
 	return hall_numbers[num]
