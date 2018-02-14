@@ -2,7 +2,8 @@
 by Scott Fredericks, Spring 2018
 Given a space group number between 1 and 230,
 and a number N of atoms in the primitive cell,
-produces a crystal structure with random atomic coordinates.'''
+produces a crystal structure with random atomic coordinates.
+Outputs a cif file with conventional setting'''
 
 import pymatgen as pmg
 
@@ -23,6 +24,8 @@ tol = 1.0 #seperation tolerance in Angstroms
 num_attempts1 = 3
 num_attempts2 = 10
 
+#Choose random lattice parameters consistent with the lattice type
+#Uses the conventional setting; pymatgen handles this with the Structure class
 def choose_lattice(space_group_num, N):
 	sg = space_group_num
 	#Triclinic
@@ -62,30 +65,28 @@ def choose_lattice(space_group_num, N):
 		#P lattice
 		else:
 			pass
-	#Trigonal/Rhombohedral
-	elif sg <= 167:
+	#Trigonal/Rhombohedral/Hexagonal
+	elif sg <= 194:
 		#Rhombohedral (R) lattice
 		if sg in [146, 148, 155, 160, 161, 166, 167]:
 			pass
-		#Trigonal (P) lattice
+		#P lattice
 		else:
 			pass
-	#Hexagonal
-	elif sg <= 194:
-		pass
 	#Cubic
 	else:
 		#F lattice
 		if sg in [196, 202, 203, 209, 210, 216, 219, 225, 226, 227, 228]:
-			pass
+			s = (4*N) ** (1./3.)
 		#I lattice
 		elif sg in [197, 199, 204, 206, 211, 214, 217, 220, 229, 230]:
-			pass
+			s = (2*N) ** (1./3.)
 		#P lattice
 		else:
 			s = N ** (1./3.)
-			a, b, c = s, s, s
-			alpha, beta, gamma = 90., 90., 90.
+		a, b, c = s, s, s
+		alpha, beta, gamma = 90., 90., 90.
+			
 
 #Create structure with pymatgen
 #primitive_lattice = pmg.core.lattice.from_lengths_and_angles()
