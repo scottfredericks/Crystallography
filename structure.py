@@ -15,11 +15,11 @@ import database.make_sitesym as make_sitesym
 import database.hall as hall
 
 #Define variables
+#------------------------------
 deg = 2.*pi/360. #radian conversion factor for sin and cos
 min_separation = 1.0 #seperation tolerance in Angstroms
-num_attempts1 = 3
-num_attempts2 = 10
-space_group_num = int(input("International number of space group: "))
+max_attempts = 10
+'''space_group_num = int(input("International number of space group: "))
 if space_group_num < 1 or space_group_num > 230:
 	print("Error: Invalid space group number.")
 	quit()
@@ -30,7 +30,12 @@ for x in y:
 	num_atoms.append(int(x))
 if len(species) != len(num_atoms):
 	print("Error: Number of atoms does not match number of species.")
-	quit()
+	quit()'''
+
+#Define functions
+#------------------------------
+def rand_coords():
+	return [rand(0,1), rand(0,1), rand(0,1)]
 
 #Choose random lattice parameters consistent with the lattice type
 #Uses the conventional setting; pymatgen handles this with the Structure class
@@ -129,11 +134,9 @@ def choose_lattice(sg, N):
 		a, b, c = s, s, s
 	return [[a, b, c], [alpha, beta, gamma]]
 
-def rand_coords():
-	return [rand(0,1), rand(0,1), rand(0,1)]
-
-def get_wyckoff_positions(hall_number):
+def get_wyckoff_positions(international_number):
 	array = []
+	hall_number = hall.hall_from_hm(international_number)
 	wyckoff_positions = make_sitesym.get_wyckoff_position_operators('database/Wyckoff.csv', hall_number)
 	for x in wyckoff_positions:
 		temp = []
@@ -142,20 +145,62 @@ def get_wyckoff_positions(hall_number):
 		array.append(temp)
 	return array
 
-#Create 1-atom structure with pymatgen
-y = 0
-for x in num_atoms:
-	y += x
-params = choose_lattice(space_group_num, y)
-conventional_lattice = pymatgen.core.lattice.Lattice.from_lengths_and_angles( params[0], params[1] )
+def connected_components(graph): #Return a set of connected components for an undirected graph
+	def add_neighbors(el, seen=[]):
+		if seen == []: seen = [el]
+		for x in graph[el]:
+			if x not in seen:
+				seen.append(x)
+				add_neighbors(x, seen)
+		return seen
+	unseen = list(range(len(graph)))
+	sets = []
+	i = 0
+	while (unseen != []):
+		x = unseen.pop()
+		sets.append([])
+		for y in add_neighbors(x):
+			sets[i].append(y)
+			if y in unseen: unseen.remove(y)
+		i += 1
+	return sets
 
+#Main Program Loop
+#------------------------------
+'''def generate_structure(space_group_num, species, num_atoms, max_attempts)
+	y = 0
+	for x in num_atoms:
+		y += x
+	loop1 = True
+	num_attempts = 0
+	while(loop = True and num_attempts < max_attempts):
+		params = choose_lattice(space_group_num, y)
+		conventional_lattice = pymatgen.core.lattice.Lattice.from_lengths_and_angles( params[0], params[1] )
+		current_atoms = 0 #number of atoms successfully added
+		while(loop2 = True and current_atoms < y)
+	
+	
+		num_attempts += 1
+'''
 #-----------------Test Functionality------------------
-struct1 = pymatgen.core.structure.Structure.from_spacegroup(space_group_num, conventional_lattice, [species[0]], [rand_coords()])
+#struct1 = pymatgen.core.structure.Structure.from_spacegroup(space_group_num, conventional_lattice, [species[0]], [rand_coords()])
 	#Add largest Wyckoff positions first (n<num_atoms)
 		#Check distance with periodic_site, merge if needed
 	#If n == num_atoms, success
 	#else, try again up to num_attempts_2 times
 	#If still failed, start over up to num_attempts_1 times
-
 #If unsuccessful, output error message
 #If successful, output Cif file (convert from primitive cell if needed)
+mygraph =[
+[1],
+[0,2],
+[1],
+[4,5],
+[3,5],
+[3,4],
+[],
+[8,9],
+[7,9],
+[7,8,10],
+[9]]
+print(connected_components(mygraph))
