@@ -6,6 +6,7 @@ produces a crystal structure with random atomic coordinates.
 Outputs a cif file with conventional setting'''
 
 import pymatgen
+from os.path import isfile
 from random import uniform as rand
 from random import choice as choose
 from math import sqrt
@@ -47,9 +48,24 @@ def filter_site(v):
 		while w[i]>=1: w[i] -= 1
 	return w
 
+#Returns the number of atoms in the conventional lattice
+def cell_size(international_number):
+	symbol = pymatgen.symmetry.groups.sg_symbol_from_int_number(international_number)
+	letter = symbol[0]
+	if letter == 'P':
+		return 1
+	if letter in ['A', 'C', 'I']:
+		return 2
+	elif letter in ['R']:
+		return 3
+	elif letter in ['F']:
+		return 4
+	else: return "Error: Could not determine lattice type"
+
 #Choose random lattice parameters consistent with the lattice type
 #Uses the conventional setting; pymatgen handles this with the Structure class
 def choose_lattice(sg, N):
+	#TODO: simplify by using cell_size
 	v = 15. #volume per atom
 	m = 2. #minimum lattice spacing
 	#Triclinic
@@ -61,7 +77,8 @@ def choose_lattice(sg, N):
 			theta = rand(30., 150.) #alpha is restricted by beta and gamma, so an intermediary value is needed
 			if fabs(cos(gamma*deg)*cos(beta*deg)+sin(gamma*deg)*cos(theta*deg)) <= 1.0:
 				alpha = acos(cos(gamma*deg)*cos(beta*deg)+sin(gamma*deg)*cos(theta*deg)) / deg
-		x = sqrt(1. - cos(alpha*deg)**2 - cos(beta*deg)**2 - cos(gamma*deg)**2 + 2.*cos(alpha*deg)*cos(beta*deg)*cos(gamma*deg))
+		print(alpha, beta, gamma, theta)
+		x = sqrt(fabs(1. - cos(alpha*deg)**2 - cos(beta*deg)**2 - cos(gamma*deg)**2 + 2.*cos(alpha*deg)*cos(beta*deg)*cos(gamma*deg)))
 		#P lattice
 		a = rand(2., v*N/(m*m*x))
 		b = rand(2., v*N/(a*m*x))
@@ -182,12 +199,12 @@ def connected_components(graph): #Return a set of connected components for an un
 def generate_structure(space_group_num, species, num_atoms):
 	wyckoffs = get_wyckoff_positions(space_group_num) #2d array of Symm_Ops
 	i = 0
-	j = 0
 	wyckoffs_organized = [[]] #2D Array of Wyckoff positions organized by multiplicity
 	old = len(wyckoffs[0])
 	for x in wyckoffs:
-		mult = len(wyckoffs[i])
+		mult = len(x)
 		if mult != old:
+			wyckoffs_organized.append([])
 			i += 1
 			old = mult
 		wyckoffs_organized[i].append(x)
@@ -205,54 +222,115 @@ def generate_structure(space_group_num, species, num_atoms):
 			struct1 = pymatgen.core.structure.Structure.from_spacegroup(space_group_num, conventional_lattice, [], [])
 			#Add atoms one species at a time
 			i = 0
-			success_atom = True
-			while (i < len(species) and success_atom):
+			success_species = True
+			while (i < len(species) and success_species):
+				struct2 = pymatgen.core.structure.Structure.from_spacegroup(space_group_num, conventional_lattice, [], [])
+				for x in struct1:
+					struct2.append(x.specie, x.frac_coords)
 				attempts3 = 0 #Num of attempts for a given species
-				#Strangely, just using struct2 = struct1 causes methods on struct2 to affect struct1
-				success_atom = False
+				success_species = False
 				element = species[i]
-				needed = num_atoms[i]
+				needed = num_atoms[i]*cell_size(space_group_num)
 				total = 0
-				while (not success_atom and attempts3 < max3):
-					loop = True
+				while (not success_species and attempts3 < max3):
 					j = 0
-					while loop:
-						mult = len(wyckoffs_organized[j])
-						if (needed - total <= mult):
+					while (j < len(wyckoffs_organized)):
+						mult = len(wyckoffs_organized[j][0])
+						if (mult <= needed - total):
 							#Choose a random Wyckoff position for given multiplicity
 							ops = choose(wyckoffs_organized[j])
 							#Generate a list of coords from ops
 							point = rand_coords()
-							new_coords = []
+							unmerged_coords = []
 							for x in ops:
-								new_coords.append(x.operate(point))
+								unmerged_coords.append(x.operate(point))
 							#Create a graph from new_coords
 							graph = []
-							struct2 = pymatgen.core.structure.Structure.from_spacegroup(1, conventional_lattice, ['H'], new_coords)
-							for x in struct2.sites:
-								pass
-							loop = False
+							spec = []
+							for x in range(mult):
+								spec.append(species[i])
+							struct3 = pymatgen.core.structure.Structure.from_spacegroup(1, conventional_lattice, spec, unmerged_coords)
+							k = 0
+							while (k < len(struct3.sites)):
+								graph.append([])
+								l = 0
+								while (l < len(struct3.sites)):
+									if (struct3[k].distance(struct3[l]) <= tol and l != k):
+										graph[k].append(l)
+									l += 1
+								k += 1
+							#Merge positions
+							merged_coords = []
+							a = connected_components(graph)
+							k = 0
+							while k < len(a):
+								vector = [0,0,0]
+								for x in a[k]:
+									for l in range(3):
+										#Note: To avoid ambiguity between 0.5 and 0 as averages,
+										#the negative values in unmerged_coords are needed.
+										vector[l] += unmerged_coords[x][l] / len(a[k])
+								merged_coords.append(vector)
+								k += 1
+							#Create new structure with merged_coords and struct1
+							spec = []
+							for x in range(len(merged_coords)):
+								spec.append(species[i])
+							struct4 = pymatgen.core.structure.Structure.from_spacegroup(space_group_num, conventional_lattice, [], [])
+							for x in merged_coords:
+								struct4.append(species[i], x)
+							for x in struct2:
+								struct4.append(x.specie, x.frac_coords)
+							k = 0
+							too_close = False
+							while k < len(struct3):
+								l = k
+								while l < len(struct4):
+									if l != k:
+										if (struct4[k].distance(struct4[l]) <= tol):
+											too_close = True
+									l += 1
+								k += 1
+							if not too_close:
+								struct2 = pymatgen.core.structure.Structure.from_dict(struct4.as_dict())
+								total += len(merged_coords)
+								if total == needed:
+									success_species = True
+							else: attempts3 += 1
 						else:
 							j += 1
-							if j >= len(wyckoffs_organized): loop = False
-					attempts3 += 1
-				i += 1
-			if not success_atom: attempts2 += 1
-		if not success: attempts1 += 1
-	return struct1
+					if not success_species: attempts3 += 1
+				if success_species:
+					i += 1
+					struct1 = pymatgen.core.structure.Structure.from_dict(struct2.as_dict())
+					if i == len(species):
+						success = True
+			attempts2 += 1
+		attempts1 += 1
+	if success: return struct1
 
 #-----------------Test Functionality------------------
-'''space_group_num = int(input("International number of space group: "))
-if space_group_num < 1 or space_group_num > 230:
-	print("Error: Invalid space group number.")
-	quit()
-species = input("Atomic species (separated by commas): ").split(',')
-y = input("Number of atoms in the primitive cell (separated by commas): ").split(',')
+sg = int(input("International Number: "))
+a = input("List of atomic species (separated by commas):")
+a = a.split(',')
+species = []
+for x in a:
+	species.append(x.replace(" ",""))
+a = input("Number of each atom in primitive cell (separated by commas): ")
+a = a.split(',')
 num_atoms = []
-for x in y:
-	num_atoms.append(int(x))
-if len(species) != len(num_atoms):
-	print("Error: Number of atoms does not match number of species.")
-	quit()'''
-print(generate_structure(1, ['H'], [1]))
-
+for x in a:
+	num_atoms.append(int(x.replace(" ","")))
+print("Attempting to generate structure...")
+new_struct = generate_structure(sg, species, num_atoms)
+if new_struct:
+	print(new_struct)
+	num = 1
+	formula = new_struct.formula.replace(" ","")
+	text = "random_"+formula+"_"+str(num)+".cif"
+	while(isfile(text)):
+		num += 1
+		text = "random_"+formula+"_"+str(num)+".cif"
+	new_struct.to(fmt="cif", filename = (text))
+	print("Output to "+text)
+else: print("Failed to generate structure.")
