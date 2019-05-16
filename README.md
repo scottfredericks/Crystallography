@@ -1,6 +1,6 @@
 # Crystallography
 Code for the study of mathematical crystallography. Developed at UNLV department of Physics.<br>
-Note: code is the old version of this repository, and is not currently being maintained. For the current version, visit 
+Note: This code has been transitioned into a new repository: 
 https://github.com/qzhu2017/PyXtal<br>
 ## Current project: pseudosymmetry search (main.py)<br>
 A program for calculating pseudymmetry groups for a given crystal structure.<br>
